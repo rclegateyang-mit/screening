@@ -1,6 +1,0 @@
-Penalty (reported in JSON): 0.13674219055226067
-Penalty (recomputed): 0.13674219055226064
-J (number of firms): 2
-Moment vector (JSON):
-  m_1: -0.4608442633186818
-  m_2: -0.578438697854236
