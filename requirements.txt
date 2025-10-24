@@ -1,0 +1,21 @@
+# Core scientific computing
+numpy>=1.26.0
+scipy>=1.12.0
+pandas>=2.2.0
+
+# Visualization
+matplotlib>=3.8.0
+
+# Data I/O
+pyarrow>=15.0.0
+
+# Optional acceleration
+numba>=0.59.0
+
+# JAX-based estimation
+jax[cpu]>=0.4.23
+jaxopt>=0.8
+
+# Jupyter notebooks
+jupyter>=1.0.0
+ipykernel>=6.0.0

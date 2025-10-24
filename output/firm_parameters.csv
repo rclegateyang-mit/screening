@@ -1,0 +1,25 @@
+parameter,value,unit,group,description
+sigma_A,0.37,NA,fundamentals,Standard deviation of logA
+sigma_xi,0.2,NA,fundamentals,Standard deviation of xi
+rho_Axi,0.44,NA,fundamentals,Correlation between logA and xi
+cov_11,0.1369,NA,fundamentals,"Covariance matrix entry (1,1)"
+cov_12,0.03256,NA,fundamentals,"Covariance matrix entry (1,2)"
+cov_22,0.04000000000000001,NA,fundamentals,"Covariance matrix entry (2,2)"
+c1_x,0.0,miles,mixture,Component 1 center x-coordinate
+c1_y,0.0,miles,mixture,Component 1 center y-coordinate
+c2_x,10.0,miles,mixture,Component 2 center x-coordinate
+c2_y,4.0,miles,mixture,Component 2 center y-coordinate
+c3_x,-8.0,miles,mixture,Component 3 center x-coordinate
+c3_y,6.0,miles,mixture,Component 3 center y-coordinate
+sigma_lx_c1,2.2,sd (miles),mixture,Component 1 x-direction standard deviation
+sigma_ly_c1,1.0,sd (miles),mixture,Component 1 y-direction standard deviation
+sigma_lx_c2,3.0,sd (miles),mixture,Component 2 x-direction standard deviation
+sigma_ly_c2,1.4,sd (miles),mixture,Component 2 y-direction standard deviation
+sigma_lx_c3,2.6,sd (miles),mixture,Component 3 x-direction standard deviation
+sigma_ly_c3,1.2,sd (miles),mixture,Component 3 y-direction standard deviation
+p1,0.55,NA,mixture,Component 1 mixture weight
+p2,0.25,NA,mixture,Component 2 mixture weight
+p3,0.2,NA,mixture,Component 3 mixture weight
+J,3000.0,NA,runtime,Number of firms
+I,20000.0,NA,runtime,Number of workers
+seed,123.0,NA,runtime,Random seed
