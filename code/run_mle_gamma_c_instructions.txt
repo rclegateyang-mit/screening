@@ -1,0 +1,31 @@
+# Run MLE profiling V (solve for V given γ and c)
+# NOTE: This workflow targets the archived implementation now located under
+#       code/archive/legacy_estimation/run_mle_gamma_c_jax.py. Use the
+#       penalized estimator in code/estimation for current production runs.
+# Set up recommended environment (adjust threads as needed)
+export JAX_ENABLE_X64=1
+# export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true --xla_cpu_thread_pool_size=8"
+
+PYTHONPATH=. python -m code.estimation.run_mle_gamma_c_jax \
+  --workers_path data/workers_dataset.csv \
+  --firms_path data/equilibrium_firms.csv \
+  --params_path data/parameters_effective.csv \
+  --out_dir output \
+  --maxiter 500 \
+  --tol 1e-6 \
+  --share_tol 1e-8
+#   --theta0_from_helper
+
+# To use the BLP contraction mapping for the share inversion instead of LM:
+# PYTHONPATH=. python -m code.estimation.run_mle_gamma_c_jax \
+#   --workers_path data/workers_dataset.csv \
+#   --firms_path data/equilibrium_firms.csv \
+#   --params_path data/parameters_effective.csv \
+#   --out_dir output \
+#   --maxiter 500 \
+#   --tol 1e-6 \
+#   --share_solver blp \
+#   --share_tol 1e-8 \
+#   --share_maxiter 1000
+
+# Optional: provide custom starting values for γ and c via --theta0_list or --theta0_file.

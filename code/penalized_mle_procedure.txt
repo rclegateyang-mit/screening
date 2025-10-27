@@ -1,0 +1,138 @@
+Penalized MLE Walkthrough (γ, β, φ, σₐ, V, c)
+=============================================
+
+This document explains, in step-by-step detail, how to run the streamlined penalized
+maximum-likelihood estimator implemented in `code/estimation/run_mle_penalty_phi_sigma_jax.py`.
+It is intended for someone who needs to reproduce the full pipeline and communicate
+what happens at each stage.
+
+0. Configure Paths (optional)
+-----------------------------
+- The package reads default storage locations from `path_config.json` in the project
+  root (auto-created on demand). To change them globally, run for example:
+
+      python -c "import code; code.configure_paths(data_dir='~/screening-data', output_dir='~/screening-output')"
+
+- Subsequent commands pick up these directories automatically. Environment variables
+  `SCREENING_DATA_DIR` and `SCREENING_OUTPUT_DIR` override the stored values for a
+  single session if needed.
+
+1. Prepare the Workspace
+------------------------
+1. Ensure you are in the repository root (`worker-screening-simulations`).
+2. Create a dedicated Python environment (conda or venv) with the dependencies from
+   `requirements.txt`. The key packages are `jax`, `jaxopt`, `numpy`, `pandas`,
+   `matplotlib`, and `scipy`.
+3. Activate the environment and export `PYTHONPATH=.` so that the `code` package is
+   importable. Example:
+
+       export PYTHONPATH=$(pwd)
+
+2. Generate Simulation Inputs
+-----------------------------
+The estimator assumes three CSV files in the configured data directory (defaults to `data/`):
+- `parameters_effective.csv`: global model parameters.
+- `equilibrium_firms.csv`: firm-level equilibrium outcomes.
+- `workers_dataset.csv`: sampled worker characteristics and observed choices.
+
+Create them using the numbered data-environment pipeline (each step reads the output
+from the previous one):
+
+    python -m code.data_environment.01_prep_data --N 1000 --J 10 \
+        --quad_n_x 20 --quad_n_y 20 --conduct_mode 2
+
+    python -m code.data_environment.02_solve_equilibrium --conduct_mode 2 --method broyden
+
+    python -m code.data_environment.03_draw_workers
+
+Each command prints the location of the files it generates; verify that the three
+CSV files appear in the data directory before proceeding.
+
+3. Launch the Penalized MLE
+---------------------------
+Run the single estimation entry point (all estimation logic now lives here):
+
+    python -m code.estimation.run_mle_penalty_phi_sigma_jax \
+        --workers_path data/workers_dataset.csv \
+        --firms_path data/equilibrium_firms.csv \
+        --params_path data/parameters_effective.csv \
+        --out_dir output
+
+Important optional flags:
+- `--theta0_from_helper`: build starting values for (γ, V, c) from the data; β, φ, σₐ
+  use hard-coded warm starts (0.3, 1.3, 1.0).
+- `--theta0_list` or `--theta0_file`: provide a custom initial vector of length
+  `4 + 2J` (γ, β, φ, σₐ, V₁…V_J, c₁…c_J).
+- `--weight_matrix_path`: replace the default identity weighting matrix used in the
+  penalty term with a custom J×J matrix (csv/json/npy).
+- `--skip_statistics`: skip the Hessian inversion step if you only need point
+  estimates (useful when J is large).
+- `--skip_plot`: skip generating the diagnostic PNG.
+
+Resource tips:
+- The script enables float64 and uses JAX’s XLA backend. For deterministic CPU
+  performance you can export
+
+      export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true --xla_cpu_thread_pool_size=K"
+
+  where `K` is the number of physical cores you want to use.
+
+4. What the Script Does Internally
+----------------------------------
+1. **Data loading**: reads the three CSV files and converts them to JAX arrays.
+   It also loads the weighting matrix (identity if not provided) and counts the
+   observed workers per firm.
+2. **Baseline bookkeeping**: records the parameter values implied by the data
+   (γ₀, β₀, φ₀, σₐ₀, V₀, c₀) for later distance diagnostics.
+3. **Reparameterisation**: builds a custom transform between unconstrained z ∈ ℝ^{4+2J}
+   and the bounded parameter vector θ. The transform enforces:
+   - γ, β ∈ (ε, 1-ε) via logistic maps,
+   - φ, σₐ, c_j > 0 via softplus plus small floors,
+   - V_j free in ℝ.
+4. **Objective compilation**:
+   - `compute_penalty_components_with_params_jax` (from `jax_model.py`) returns the
+     predicted choice probabilities, per-worker log-likelihood contributions, and
+     the labor-market moments used in the penalty.
+   - The penalized objective is `Σ_n ℓ_n(θ) + ½ m(θ)' W m(θ)`, where W is the weight
+     matrix. Both the objective and its gradient w.r.t. z are JIT-compiled exactly
+     once using `jax.value_and_grad`.
+5. **Optimisation**: runs LBFGS from `jaxopt` on the unconstrained variables z. The
+   solver stops when the gradient norm falls below `--tol` or the iteration cap is
+   reached.
+6. **Post-solve diagnostics**:
+   - Evaluates the fitted probabilities, labor allocations, and average skill by firm.
+   - Computes empirical vs model market shares and distance metrics relative to the
+     baseline parameters.
+   - Optionally builds the Hessian of the penalized objective to approximate standard
+     errors and confidence intervals (skip with `--skip_statistics`).
+   - Optionally produces a PNG summarising scalar parameter estimates and firm-level
+     V and c estimates with 95% confidence intervals.
+7. **Outputs**: writes
+   `output/mle_gamma_beta_phi_sigma_Vc_penalty_estimates_jax.json`, containing every
+   quantity printed in the console plus the raw vectors and meta-data. The file also
+   records timing information for reproducibility.
+
+5. Explaining the Results
+-------------------------
+When presenting the outcome to someone else, walk through the JSON payload:
+- `theta_hat`: the final parameter vector in economic units.
+- `objective_breakdown`: separates data fit (negative log-likelihood) from the
+  penalty contribution.
+- `moment_vector`: the J-length penalty moments evaluated at θ̂.
+- `labor_supplied_data` vs `labor_supplied_model`: observed vs fitted firm labor.
+- `distance_metrics`: quick comparisons against the baseline parameter files.
+- `penalized_se_proxy` and `ci_radius_95`: standard-error proxies derived from the
+  Hessian (if requested).
+- `market_shares`: validates that the model replicates the empirical share profile.
+- `theta_plot_path`: (optional) path to the diagnostic PNG for slides or reports.
+
+6. Checklist When Handing Off the Procedure
+-------------------------------------------
+- Confirm that the trainee knows how to regenerate the three input CSV files.
+- Emphasise the need to activate the correct Python environment and set `PYTHONPATH`.
+- Walk through the command invocation and explain each optional flag they are likely
+  to need (starting values, weighting matrix, statistics toggle, plotting toggle).
+- Highlight where outputs land (default output directory JSON + optional PNG) and which numbers to
+  cite in a report (θ̂, objective components, penalty moments, distance metrics).
+- Remind them that all legacy estimators are archived; `run_mle_penalty_phi_sigma_jax`
+  is now the single source of truth for estimation runs.

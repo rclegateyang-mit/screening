@@ -1,0 +1,29 @@
+# Configure environment for JAX CPU performance (10 cores, Apple Silicon)
+export JAX_ENABLE_X64=0
+export XLA_FLAGS="--xla_force_host_platform_device_count=10"
+
+# Data preparation and equilibrium solves
+python -m code.data_environment.01_prep_data --N 1000 --J 1 --quad_n_x 20 --quad_n_y 20 --conduct_mode 2 --seed 314 --gamma 0.05
+python -m code.data_environment.02_solve_equilibrium --conduct_mode 2 --method broyden
+python -m code.data_environment.03_draw_workers
+
+# Penalized MLE (γ, β, φ, σₐ, V, c)
+python -m code.estimation.run_mle_penalty_phi_sigma_jax \
+  --workers_path data/workers_dataset.csv \
+  --firms_path data/equilibrium_firms.csv \
+  --params_path data/parameters_effective.csv \
+  --out_dir output \
+  --theta0_from_helper \
+  --maxiter 750 \
+  --tol 1e-7
+
+# Optional: skip Hessian/plot for faster experimentation
+# python -m code.estimation.run_mle_penalty_phi_sigma_jax \
+#   --workers_path data/workers_dataset.csv \
+#   --firms_path data/equilibrium_firms.csv \
+#   --params_path data/parameters_effective.csv \
+#   --out_dir output \
+#   --theta0_from_helper \
+#   --weight_matrix_path path/to/custom_weight.csv \
+#   --skip_statistics \
+#   --skip_plot

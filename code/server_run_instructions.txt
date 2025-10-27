@@ -1,0 +1,18 @@
+# Configure environment for JAX CPU performance (96 cores)
+export JAX_ENABLE_X64=1
+export XLA_FLAGS="--xla_force_host_platform_device_count=96"
+
+# Data preparation and equilibrium solves
+PYTHONPATH=. python -m code.data_environment.01_prep_data --N 1000 --J 10 --quad_n_x 20 --quad_n_y 20 --conduct_mode 2
+PYTHONPATH=. python -m code.data_environment.02_solve_equilibrium --conduct_mode 2 --method broyden
+PYTHONPATH=. python -m code.data_environment.03_draw_workers
+
+# Penalized JAX MLE (optimized for 96 cores)
+PYTHONPATH=. python -m code.estimation.run_mle_penalty_phi_sigma_jax \
+  --workers_path data/workers_dataset.csv \
+  --firms_path data/equilibrium_firms.csv \
+  --params_path data/parameters_effective.csv \
+  --out_dir output \
+  --theta0_from_helper \
+  --maxiter 600 \
+  --tol 5e-8

@@ -1,0 +1,17 @@
+# Worker Screening Simulation Workflow
+
+- Optional: configure custom data/output directories once with
+  `python -c "import code; code.configure_paths(data_dir='~/my-data', output_dir='~/my-output')"`.
+
+1. Data Environment Setup
+   - Run `python -m code.data_environment.01_prep_data` to generate firm parameters, quadrature grids, and baseline configuration files in the configured data directory (defaults to `data/`).
+   - Run `python -m code.data_environment.02_solve_equilibrium` to solve the wage/cutoff fixed point using the generated inputs (reads/writes in the data directory).
+   - Run `python -m code.data_environment.03_draw_workers` to sample worker characteristics and write the worker dataset CSV (data directory).
+
+2. Estimation
+   - All legacy estimators have been archived under `code/archive/legacy_estimation`.
+   - Use the streamlined penalized MLE: `python -m code.estimation.run_mle_penalty_phi_sigma_jax` (writes results to the configured output directory, default `output/`).
+   - Refer to `code/penalized_mle_procedure.txt` for a full step-by-step walkthrough, including optional flags and diagnostic outputs.
+
+3. Outputs
+   - Data preparation commands read from and write to the configured data directory; estimation scripts default to the configured output directory. Adjust CLI flags as needed for alternative paths.
