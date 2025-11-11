@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import special
-from scipy.optimize import root
+from scipy.optimize import minimize, root
 
 try:
     from .. import get_data_dir
@@ -296,7 +296,7 @@ def fixed_point_map(
     A_byc = A[order_idx]  # TFP in by-c order
     
     if conduct_mode == 1:
-        # Monopsonistic: log w_j = log(1-β) + log Y_j - log L_j + log(α/(α+1))
+        # monopsonistic competition w_j = log(1-β) + log Y_j - log L_j + log(α/(α+1))
         logw_new_byc = np.log(1 - beta) + safe_logs(Y, eps) - safe_logs(L, eps) + np.log(alpha / (alpha + 1))
     elif conduct_mode == 2:
         # Behavioral elasticities: use firm-specific eps_L_behavioral and eps_S_behavioral
@@ -311,9 +311,6 @@ def fixed_point_map(
         numerator = eps_L_behavioral_byc + eps_S_behavioral_byc
         denominator = eps_L_behavioral_byc + 1
         logw_new_byc = np.log(1 - beta) + safe_logs(Y, eps) - safe_logs(L, eps) + safe_logs(numerator / np.maximum(denominator, eps), eps)
-    else:
-        # conduct_mode == 0: For now, use status quo as placeholder
-        logw_new_byc = np.log(1 - beta) + safe_logs(Y, eps) - safe_logs(L, eps) + safe_logs((L_elas_byc + S_elas_byc) / (L_elas_byc + 1))
     
     # c-update: log c_j = log w_j - log A_j - log(1-beta) + beta/(1-beta) *(log Y_j - log A_j)
     logc_new_byc = logw_new_byc - np.log(A_byc) - np.log(1 - beta) + beta/(1 - beta) * (safe_logs(Y, eps) - np.log(A_byc))
@@ -769,6 +766,10 @@ def write_equilibrium_csv(
     logc: np.ndarray,
     rank: np.ndarray,
     firm_id_original: Optional[np.ndarray] = None,
+    L_wage_elasticity: Optional[np.ndarray] = None,
+    S_wage_elasticity: Optional[np.ndarray] = None,
+    L_tfp_elasticity: Optional[np.ndarray] = None,
+    w_tfp_elasticity: Optional[np.ndarray] = None,
 ) -> str:
     """
     Write equilibrium results to CSV.
@@ -789,6 +790,10 @@ def write_equilibrium_csv(
         logc: Log cutoff costs
         rank: Firm ranks
         firm_id_original: Optional array of original firm IDs (before dropping)
+        L_wage_elasticity: Optional L elasticities with respect to wages
+        S_wage_elasticity: Optional S elasticities with respect to wages
+        L_tfp_elasticity: Optional L elasticities with respect to A
+        w_tfp_elasticity: Optional wage elasticities with respect to A
         
     Returns:
         Path to written file
@@ -811,6 +816,14 @@ def write_equilibrium_csv(
     }
     if firm_id_original is not None:
         data['firm_id_original'] = firm_id_original
+    if L_wage_elasticity is not None:
+        data['elastic_L_w_w'] = L_wage_elasticity
+    if S_wage_elasticity is not None:
+        data['elastic_S_w_w'] = S_wage_elasticity
+    if L_tfp_elasticity is not None:
+        data['elastic_L_A_A'] = L_tfp_elasticity
+    if w_tfp_elasticity is not None:
+        data['elastic_w_A_A'] = w_tfp_elasticity
 
     df = pd.DataFrame(data)
     # Ensure original IDs appear next to the new IDs for readability
@@ -1415,6 +1428,216 @@ def main():
             )
             drop_applied = True
 
+    # Numerical elasticities of L and S with respect to own wages
+    print("\nComputing numerical wage elasticities for L_j and S_j ...")
+    diff_step = 1e-4
+    logw_equil = np.log(np.maximum(w, 1e-300))
+    logc_equil = np.log(np.maximum(c, 1e-300))
+
+    w_equil = np.exp(logw_equil)
+    c_equil = np.exp(logc_equil)
+    J_final = w_equil.size
+    L_wage_elasticity = np.zeros(J_final, dtype=float)
+    S_wage_elasticity = np.zeros(J_final, dtype=float)
+
+    for j in range(J_final):
+        w_plus = w_equil.copy()
+        w_minus = w_equil.copy()
+        w_plus[j] *= np.exp(diff_step)
+        w_minus[j] *= np.exp(-diff_step)
+
+        agg_plus = aggregate_over_locations(
+            support_points,
+            support_weights,
+            w_plus,
+            c_equil,
+            xi,
+            loc_firms,
+            alpha,
+            gamma,
+            mu_s,
+            sigma_s,
+        )
+        agg_minus = aggregate_over_locations(
+            support_points,
+            support_weights,
+            w_minus,
+            c_equil,
+            xi,
+            loc_firms,
+            alpha,
+            gamma,
+            mu_s,
+            sigma_s,
+        )
+
+        L_plus = np.maximum(np.asarray(agg_plus["L_firms_nat"], dtype=float)[j], 1e-12)
+        L_minus = np.maximum(np.asarray(agg_minus["L_firms_nat"], dtype=float)[j], 1e-12)
+        S_plus = np.maximum(np.asarray(agg_plus["S_firms_nat"], dtype=float)[j], 1e-12)
+        S_minus = np.maximum(np.asarray(agg_minus["S_firms_nat"], dtype=float)[j], 1e-12)
+
+        L_wage_elasticity[j] = (np.log(L_plus) - np.log(L_minus)) / (2.0 * diff_step)
+        S_wage_elasticity[j] = (np.log(S_plus) - np.log(S_minus)) / (2.0 * diff_step)
+
+    result["L_wage_elasticity"] = L_wage_elasticity
+    result["S_wage_elasticity"] = S_wage_elasticity
+
+    print(
+        f"  L elasticities (min, max): ({L_wage_elasticity.min():.4f}, {L_wage_elasticity.max():.4f})"
+    )
+    print(
+        f"  S elasticities (min, max): ({S_wage_elasticity.min():.4f}, {S_wage_elasticity.max():.4f})"
+    )
+
+    # Numerical elasticities of L and w with respect to own TFP
+    print("\nComputing numerical TFP elasticities for L_j and w_j ...")
+    diff_step_A = max(diff_step, 1e-2)
+    logA_equil = np.log(np.maximum(A, 1e-300))
+    L_tfp_elasticity = np.zeros(J_final, dtype=float)
+    w_tfp_elasticity = np.zeros(J_final, dtype=float)
+    tfp_labor_clipped = 0
+    tfp_w_zero = 0
+    w_equil = np.exp(logw_equil)
+    c_equil = np.exp(logc_equil)
+
+    def _profit_at_logs(log_vec: np.ndarray, firm_idx: int, A_variant: np.ndarray) -> float:
+        w_candidate = w_equil.copy()
+        c_candidate = c_equil.copy()
+        w_candidate[firm_idx] = np.exp(log_vec[0])
+        c_candidate[firm_idx] = np.exp(log_vec[1])
+
+        agg = aggregate_over_locations(
+            support_points,
+            support_weights,
+            w_candidate,
+            c_candidate,
+            xi,
+            loc_firms,
+            alpha,
+            gamma,
+            mu_s,
+            sigma_s,
+        )
+
+        order_idx = agg["order_idx"]
+        inv_order = agg["inv_order"]
+        L_byc = np.maximum(agg["L_byc"][1:], 0.0)
+        S_byc = np.maximum(agg["S_byc"][1:], 1e-12)
+        L_levels_byc = N_workers * L_byc
+        A_byc = A_variant[order_idx]
+        LS_term = np.maximum(L_levels_byc * S_byc, 1e-300)
+        Y_byc = A_byc * (LS_term ** (1 - beta))
+        Y_nat = Y_byc[inv_order]
+
+        L_share_nat = np.maximum(agg["L_firms_nat"], 1e-12)
+        L_levels_nat = N_workers * L_share_nat
+
+        profit = Y_nat[firm_idx] - w_candidate[firm_idx] * L_levels_nat[firm_idx]
+        return profit
+
+    def optimize_profit_best_response(
+        A_variant: np.ndarray, firm_idx: int
+    ) -> Tuple[float, float]:
+        x0 = np.array([logw_equil[firm_idx], logc_equil[firm_idx]], dtype=float)
+
+        def objective(log_vec: np.ndarray) -> float:
+            return -_profit_at_logs(log_vec, firm_idx, A_variant)
+
+        result = minimize(objective, x0, method="L-BFGS-B")
+        if not result.success:
+            print(
+                f"Warning: profit optimizer for firm {firm_idx} returned {result.message}; "
+                "using best available point."
+            )
+        return float(result.x[0]), float(result.x[1])
+
+    for j in range(J_final):
+        A_plus = A.copy()
+        A_plus[j] = np.exp(logA_equil[j] + diff_step_A)
+
+        logw_br_plus_j, logc_br_plus_j = optimize_profit_best_response(A_plus, j)
+
+        logw_response_plus = logw_equil.copy()
+        logc_response_plus = logc_equil.copy()
+        logw_response_plus[j] = logw_br_plus_j
+        logc_response_plus[j] = logc_br_plus_j
+
+        agg_plus = aggregate_over_locations(
+            support_points,
+            support_weights,
+            np.exp(logw_response_plus),
+            np.exp(logc_response_plus),
+            xi,
+            loc_firms,
+            alpha,
+            gamma,
+            mu_s,
+            sigma_s,
+        )
+        L_plus = np.maximum(
+            np.asarray(agg_plus["L_firms_nat"], dtype=float)[j],
+            1e-12,
+        )
+
+        A_minus = A.copy()
+        A_minus[j] = np.exp(logA_equil[j] - diff_step_A)
+
+        logw_br_minus_j, logc_br_minus_j = optimize_profit_best_response(A_minus, j)
+
+        logw_response_minus = logw_equil.copy()
+        logc_response_minus = logc_equil.copy()
+        logw_response_minus[j] = logw_br_minus_j
+        logc_response_minus[j] = logc_br_minus_j
+
+        agg_minus = aggregate_over_locations(
+            support_points,
+            support_weights,
+            np.exp(logw_response_minus),
+            np.exp(logc_response_minus),
+            xi,
+            loc_firms,
+            alpha,
+            gamma,
+            mu_s,
+            sigma_s,
+        )
+        L_minus = np.maximum(
+            np.asarray(agg_minus["L_firms_nat"], dtype=float)[j],
+            1e-12,
+        )
+
+        w_tfp_elasticity[j] = (logw_br_plus_j - logw_br_minus_j) / (
+            2.0 * diff_step_A
+        )
+        L_tfp_elasticity[j] = (np.log(L_plus) - np.log(L_minus)) / (
+            2.0 * diff_step_A
+        )
+
+        if L_plus <= 1.1e-12 and L_minus <= 1.1e-12:
+            tfp_labor_clipped += 1
+        if abs(w_tfp_elasticity[j]) <= 1e-10:
+            tfp_w_zero += 1
+
+    result["L_tfp_elasticity"] = L_tfp_elasticity
+    result["w_tfp_elasticity"] = w_tfp_elasticity
+
+    print(
+        f"  L elasticities w.r.t. A (min, max): ({L_tfp_elasticity.min():.4f}, {L_tfp_elasticity.max():.4f})"
+    )
+    print(
+        f"  w elasticities w.r.t. A (min, max): ({w_tfp_elasticity.min():.4f}, {w_tfp_elasticity.max():.4f})"
+    )
+    if tfp_labor_clipped > 0:
+        print(
+            f"  Note: {tfp_labor_clipped} firms hit the 1e-12 employment floor under both TFP shocks; "
+            "their labor elasticities are mechanically zero."
+        )
+    if tfp_w_zero > 0:
+        print(
+            f"  Note: {tfp_w_zero} firms show w elasticities ≈ 0 because their optimal wage does not move when "
+            "TFP changes (typically due to negligible employment)."
+        )
+
     print(f"\nSolution bounds:")
     print(f"  L: [{np.min(L):.4f}, {np.max(L):.4f}]")
     print(f"  S: [{np.min(S):.4f}, {np.max(S):.4f}]")
@@ -1461,8 +1684,12 @@ def main():
         Y,
         result['logw'],
         result['logc'],
-        result['rank']
-        #,firm_id_original=firm_id_original if drop_applied else None,
+        result['rank'],
+        firm_id_original=firm_id_original if drop_applied else None,
+        L_wage_elasticity=L_wage_elasticity,
+        S_wage_elasticity=S_wage_elasticity,
+        L_tfp_elasticity=L_tfp_elasticity,
+        w_tfp_elasticity=w_tfp_elasticity,
     )
     print(f"Equilibrium results written to: {equilibrium_path}")
     
