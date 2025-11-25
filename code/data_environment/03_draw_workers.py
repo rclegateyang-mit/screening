@@ -433,6 +433,46 @@ def construct_worker_dataset(
     return df
 
 
+def compute_choices_no_cutoff(
+    worker_df: pd.DataFrame, firms_df: pd.DataFrame, params: Dict[str, Any], seed: int
+) -> np.ndarray:
+    """
+    Compute worker firm choices when all firms accept all workers (no cutoffs).
+    Returns array of chosen firm_ids (natural IDs); 0 denotes outside option.
+    """
+    alpha = float(params.get("alpha", 5.0))
+    gamma = float(params.get("gamma", 0.05))
+    wages_col = "w_noscreening" if "w_noscreening" in firms_df.columns else "w"
+
+    wages = np.asarray(firms_df[wages_col].to_numpy(), dtype=float)
+    xi_vals = np.asarray(firms_df["xi"].to_numpy(), dtype=float)
+    loc_firms = firms_df[["x", "y"]].to_numpy(dtype=float)
+    firm_ids = np.asarray(firms_df["firm_id"].to_numpy(), dtype=int)
+    J = wages.size
+
+    worker_locations = worker_df[["ell_x", "ell_y"]].to_numpy(dtype=float)
+    N = worker_locations.shape[0]
+
+    rng = np.random.default_rng(seed)
+    errors = rng.gumbel(0, 1, size=(N, J + 1))  # outside + J firms
+
+    utilities = np.zeros((N, J + 1))
+    utilities[:, 0] = errors[:, 0]  # outside option
+
+    for j in range(J):
+        distances = np.linalg.norm(worker_locations - loc_firms[j], axis=1)
+        utilities[:, j + 1] = (
+            alpha * np.log(np.maximum(wages[j], 1e-300))
+            + xi_vals[j]
+            - gamma * distances
+            + errors[:, j + 1]
+        )
+
+    chosen_idx = np.argmax(utilities, axis=1)
+    chosen_firm_ids = np.where(chosen_idx == 0, 0, firm_ids[chosen_idx - 1])
+    return chosen_firm_ids
+
+
 # =============================================================================
 # MAIN FUNCTION
 # =============================================================================
@@ -454,6 +494,12 @@ def main() -> int:
         type=str,
         default=str(data_dir / "equilibrium_firms.csv"),
         help="Path to equilibrium firms CSV file (for reference only)",
+    )
+    parser.add_argument(
+        "--firms_noscreening_path",
+        type=str,
+        default=str(data_dir / "equilibrium_firms_noscreening.csv"),
+        help="Optional path to no-screening equilibrium firms CSV (for worker_noscreening dataset).",
     )
 
     parser.add_argument(
@@ -480,6 +526,7 @@ def main() -> int:
     
     params_path = Path(args.params_path)
     firms_path = Path(args.firms_path)
+    firms_noscreen_path = Path(args.firms_noscreening_path)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     
@@ -494,6 +541,8 @@ def main() -> int:
     
     if not firms_path.exists():
         print(f"Warning: {firms_path} not found")
+    if not firms_noscreen_path.exists():
+        print(f"Note: no-screening firms file {firms_noscreen_path} not found; skipping worker noscreening dataset.")
     
     # Read data
     print("Reading data...")
@@ -685,6 +734,46 @@ def main() -> int:
     output_path = out_dir / "workers_dataset.csv"
     worker_dataset.to_csv(output_path, index=False)
     print(f"\nWorker dataset written to: {output_path}")
+
+    # Write no-screening worker dataset if available (recompute choices with no cutoffs)
+    if firms_noscreen_path.exists():
+        try:
+            noscreen_df = pd.read_csv(firms_noscreen_path)
+            if "firm_id" not in noscreen_df.columns:
+                noscreen_df["firm_id"] = np.arange(1, len(noscreen_df) + 1, dtype=int)
+
+            chosen_ids = compute_choices_no_cutoff(worker_dataset, noscreen_df, params, seed=args.seed + 1)
+            worker_dataset_noscreen = worker_dataset.copy()
+            worker_dataset_noscreen["chosen_firm_original_id"] = chosen_ids
+
+            # Reindex to consecutive firm IDs for the chosen set
+            chosen_positions = np.sort(np.unique(chosen_ids[chosen_ids > 0]).astype(int))
+            if chosen_positions.size > 0:
+                new_ids = np.arange(1, chosen_positions.size + 1, dtype=int)
+                mapping = {old: new for old, new in zip(chosen_positions, new_ids)}
+                worker_dataset_noscreen["chosen_firm"] = worker_dataset_noscreen["chosen_firm_original_id"].apply(
+                    lambda x: mapping.get(int(x), 0)
+                )
+                firm_subset_noscreen = noscreen_df.loc[
+                    noscreen_df["firm_id"].isin(chosen_positions)
+                ].copy()
+                firm_subset_noscreen["original_firm_id"] = firm_subset_noscreen["firm_id"]
+                firm_subset_noscreen["firm_id"] = firm_subset_noscreen["firm_id"].map(mapping)
+                # Map wages for convenience
+                wage_col = "w_noscreening" if "w_noscreening" in noscreen_df.columns else "w"
+                wage_map = pd.Series(noscreen_df[wage_col].values, index=noscreen_df["firm_id"]).to_dict()
+                worker_dataset_noscreen["wage_worker_noscreening"] = worker_dataset_noscreen[
+                    "chosen_firm_original_id"
+                ].map(wage_map)
+            else:
+                worker_dataset_noscreen["chosen_firm"] = 0
+                worker_dataset_noscreen["wage_worker_noscreening"] = np.nan
+
+            noscreen_out = out_dir / "workers_dataset_noscreening.csv"
+            worker_dataset_noscreen.to_csv(noscreen_out, index=False)
+            print(f"Worker no-screening dataset written to: {noscreen_out}")
+        except Exception as exc:
+            print(f"Warning: Could not create worker no-screening dataset: {exc}")
     
     # Write summary
     summary = worker_dataset.attrs['summary']
