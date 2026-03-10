@@ -7,11 +7,13 @@ It reads effective parameters to generate workers with skill, location, and auxi
 """
 
 import argparse
+import colorsys
 import json
 from pathlib import Path
 from typing import Any, Dict
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -42,6 +44,12 @@ def suffix_sum(arr: np.ndarray) -> np.ndarray:
     """Compute suffix sums: result[i] = sum(arr[i:])"""
     return np.cumsum(arr[::-1])[::-1]
 
+
+def _categorical_palette(n: int) -> list[tuple[float, float, float]]:
+    if n <= 10:
+        return list(plt.get_cmap("tab10").colors)[:n]
+    hues = np.linspace(0.0, 1.0, n, endpoint=False)
+    return [colorsys.hls_to_rgb(float(h), 0.5, 0.65) for h in hues]
 
 
 
@@ -244,12 +252,21 @@ def construct_worker_dataset(
     worker_sigma_x = float(params['worker_sigma_x'])
     worker_sigma_y = float(params['worker_sigma_y'])
     worker_rho = float(params['worker_rho'])
+    worker_loc_mode = str(params.get('worker_loc_mode', 'cartesian'))
+    worker_r_mu = float(params.get('worker_r_mu', 0.0))
+    worker_r_sigma = float(params.get('worker_r_sigma', 1.0))
     
     # New skill distribution component parameters
     mu_x_skill = float(params.get('mu_x_skill', params.get('mu_s', 10.009)))  # Fallback for backward compatibility
     sigma_x_skill = float(params.get('sigma_x_skill', 2.6))
     mu_a_skill = float(params.get('mu_a_skill', 0.0))
     sigma_a_skill = float(params.get('sigma_a_skill', 1.5))
+    rho_x_skill_ell_x = float(params.get('rho_x_skill_ell_x', 0.0))
+    rho_x_skill_ell_y = float(params.get('rho_x_skill_ell_y', 0.0))
+    rho_x_skill_r = float(params.get('rho_x_skill_r', 0.0))
+
+    if worker_loc_mode not in ("cartesian", "polar"):
+        raise ValueError(f"worker_loc_mode must be cartesian or polar; got {worker_loc_mode}.")
     
     # Derived parameters (for validation)
     mu_s_computed = mu_x_skill + mu_a_skill
@@ -262,24 +279,97 @@ def construct_worker_dataset(
     print(f"  x_skill ~ N({mu_x_skill:.3f}, {sigma_x_skill:.3f}²)")
     print(f"  a_skill ~ N({mu_a_skill:.1f}, {sigma_a_skill:.3f}²)")
     print(f"  s_skill = x_skill + a_skill  =>  s_skill ~ N({mu_s_computed:.3f}, {sigma_s_computed:.3f}²)")
-    print(f"  locations ~ BivarN([{worker_mu_x:.1f}, {worker_mu_y:.1f}], σ=({worker_sigma_x:.1f}, {worker_sigma_y:.1f}), ρ={worker_rho:.1f})")
+    if worker_loc_mode == "polar":
+        print(
+            "  locations ~ PolarN(center=({:.1f}, {:.1f}), r~N({:.1f}, {:.1f}^2))".format(
+                worker_mu_x, worker_mu_y, worker_r_mu, worker_r_sigma
+            )
+        )
+    else:
+        print(
+            "  locations ~ BivarN([{:.1f}, {:.1f}], sigma=({:.1f}, {:.1f}), rho={:.1f})".format(
+                worker_mu_x, worker_mu_y, worker_sigma_x, worker_sigma_y, worker_rho
+            )
+        )
+    print(
+        "  corr(x_skill, ell_x)={:.3f}, corr(x_skill, ell_y)={:.3f}, corr(x_skill, r)={:.3f}".format(
+            rho_x_skill_ell_x, rho_x_skill_ell_y, rho_x_skill_r
+        )
+    )
     
     # Draw continuous samples
-    # 1) Draw x_skill from N(mu_x_skill, sigma_x_skill²)
-    x_skill = rng.normal(mu_x_skill, sigma_x_skill, N_workers)
-    
-    # 2) Draw locations from bivariate normal distribution
-    # Create covariance matrix for bivariate normal
-    cov_matrix = np.array([
-        [worker_sigma_x**2, worker_rho * worker_sigma_x * worker_sigma_y],
-        [worker_rho * worker_sigma_x * worker_sigma_y, worker_sigma_y**2]
-    ])
-    mean_vector = np.array([worker_mu_x, worker_mu_y])
-    
-    # Draw from bivariate normal
-    locations = rng.multivariate_normal(mean_vector, cov_matrix, N_workers)
-    ell_x = locations[:, 0]
-    ell_y = locations[:, 1]
+    if not (-1.0 <= rho_x_skill_ell_x <= 1.0 and -1.0 <= rho_x_skill_ell_y <= 1.0):
+        raise ValueError("rho_x_skill_ell_x and rho_x_skill_ell_y must be in [-1, 1].")
+    if not (-1.0 <= rho_x_skill_r <= 1.0):
+        raise ValueError("rho_x_skill_r must be in [-1, 1].")
+    if abs(rho_x_skill_r) > 0.0 and (abs(rho_x_skill_ell_x) > 0.0 or abs(rho_x_skill_ell_y) > 0.0):
+        raise ValueError("Set either rho_x_skill_r or rho_x_skill_ell_x/ell_y, not both.")
+    if worker_loc_mode == "polar" and (abs(rho_x_skill_ell_x) > 0.0 or abs(rho_x_skill_ell_y) > 0.0):
+        raise ValueError("Polar locations do not support ell_x/ell_y correlations; use rho_x_skill_r instead.")
+
+    def _draw_locations() -> tuple[np.ndarray, np.ndarray]:
+        if worker_loc_mode == "polar":
+            if worker_r_sigma <= 0:
+                raise ValueError("worker_r_sigma must be positive for polar locations.")
+            r_vals = rng.normal(worker_r_mu, worker_r_sigma, N_workers)
+            for _ in range(10):
+                mask = r_vals <= 0
+                if not np.any(mask):
+                    break
+                r_vals[mask] = rng.normal(worker_r_mu, worker_r_sigma, mask.sum())
+            r_vals = np.maximum(r_vals, 0.0)
+            theta_vals = rng.uniform(0.0, 2.0 * np.pi, N_workers)
+            x_vals = worker_mu_x + r_vals * np.cos(theta_vals)
+            y_vals = worker_mu_y + r_vals * np.sin(theta_vals)
+            return x_vals, y_vals
+        cov_matrix = np.array([
+            [worker_sigma_x**2, worker_rho * worker_sigma_x * worker_sigma_y],
+            [worker_rho * worker_sigma_x * worker_sigma_y, worker_sigma_y**2]
+        ])
+        mean_vector = np.array([worker_mu_x, worker_mu_y])
+        locations = rng.multivariate_normal(mean_vector, cov_matrix, N_workers)
+        return locations[:, 0], locations[:, 1]
+
+    if abs(rho_x_skill_r) > 0.0:
+        ell_x, ell_y = _draw_locations()
+        r_vals = np.sqrt((ell_x - worker_mu_x) ** 2 + (ell_y - worker_mu_y) ** 2)
+        r_std = r_vals.std()
+        if r_std <= 1e-12:
+            raise ValueError("Worker radius has near-zero variance; cannot apply rho_x_skill_r.")
+        r_std_vals = (r_vals - r_vals.mean()) / r_std
+        z = rng.normal(0.0, 1.0, N_workers)
+        x_skill = mu_x_skill + sigma_x_skill * (
+            rho_x_skill_r * r_std_vals + np.sqrt(1.0 - rho_x_skill_r**2) * z
+        )
+    elif abs(rho_x_skill_ell_x) > 0.0 or abs(rho_x_skill_ell_y) > 0.0:
+        joint_mean = np.array([mu_x_skill, worker_mu_x, worker_mu_y])
+        joint_cov = np.array(
+            [
+                [sigma_x_skill**2,
+                 rho_x_skill_ell_x * sigma_x_skill * worker_sigma_x,
+                 rho_x_skill_ell_y * sigma_x_skill * worker_sigma_y],
+                [rho_x_skill_ell_x * sigma_x_skill * worker_sigma_x,
+                 worker_sigma_x**2,
+                 worker_rho * worker_sigma_x * worker_sigma_y],
+                [rho_x_skill_ell_y * sigma_x_skill * worker_sigma_y,
+                 worker_rho * worker_sigma_x * worker_sigma_y,
+                 worker_sigma_y**2],
+            ]
+        )
+        try:
+            np.linalg.cholesky(joint_cov)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError(
+                "Invalid correlation structure for (x_skill, ell_x, ell_y); "
+                "check rho_x_skill_ell_x, rho_x_skill_ell_y, and worker_rho."
+            ) from exc
+        draws = rng.multivariate_normal(joint_mean, joint_cov, N_workers)
+        x_skill = draws[:, 0]
+        ell_x = draws[:, 1]
+        ell_y = draws[:, 2]
+    else:
+        x_skill = rng.normal(mu_x_skill, sigma_x_skill, N_workers)
+        ell_x, ell_y = _draw_locations()
     
     # 3) Draw a_skill from N(mu_a_skill, sigma_a_skill²)
     a_skill = rng.normal(mu_a_skill, sigma_a_skill, N_workers)
@@ -383,7 +473,18 @@ def construct_worker_dataset(
     print(f"μ_s: {mu_s_computed:.3f}, σ_s: {sigma_s_computed:.3f}")
     print(f"σ_x: {sigma_x_skill:.3f}, σ_a_skill: {sigma_a_skill:.3f}")
     print(f"μ_a_skill: {mu_a_skill:.3f}")
-    print(f"Location params: μ=({worker_mu_x:.1f}, {worker_mu_y:.1f}), σ=({worker_sigma_x:.1f}, {worker_sigma_y:.1f}), ρ={worker_rho:.1f}")
+    print(
+        "Location params: mode={}, mu=({:.1f}, {:.1f}), sigma=({:.1f}, {:.1f}), rho={:.1f}, r_mu={:.1f}, r_sigma={:.1f}".format(
+            worker_loc_mode,
+            worker_mu_x,
+            worker_mu_y,
+            worker_sigma_x,
+            worker_sigma_y,
+            worker_rho,
+            worker_r_mu,
+            worker_r_sigma,
+        )
+    )
     
     # Basic statistics
     print(f"x_skill: mean={x_skill.mean():.3f}, std={x_skill.std():.3f}")
@@ -394,7 +495,28 @@ def construct_worker_dataset(
     
     # Compute empirical correlation for validation
     empirical_corr = np.corrcoef(ell_x, ell_y)[0, 1]
+    corr_x_skill_ell_x = np.corrcoef(x_skill, ell_x)[0, 1]
+    corr_x_skill_ell_y = np.corrcoef(x_skill, ell_y)[0, 1]
+    r_vals = np.sqrt((ell_x - worker_mu_x) ** 2 + (ell_y - worker_mu_y) ** 2)
+    if r_vals.std() > 0:
+        corr_x_skill_r = np.corrcoef(x_skill, r_vals)[0, 1]
+    else:
+        corr_x_skill_r = np.nan
     print(f"Location correlation: empirical={empirical_corr:.3f}, expected={worker_rho:.1f}")
+    print(
+        "x_skill-location correlation: empirical=({:.3f}, {:.3f}), target=({:.3f}, {:.3f})".format(
+            corr_x_skill_ell_x,
+            corr_x_skill_ell_y,
+            rho_x_skill_ell_x,
+            rho_x_skill_ell_y,
+        )
+    )
+    print(
+        "x_skill-radius correlation: empirical={:.3f}, target={:.3f}".format(
+            corr_x_skill_r,
+            rho_x_skill_r,
+        )
+    )
     
     # Preview first 5 rows
     print(f"\n=== WORKER PREVIEW (first 5 rows) ===")
@@ -417,6 +539,12 @@ def construct_worker_dataset(
         'worker_sigma_x': worker_sigma_x,
         'worker_sigma_y': worker_sigma_y,
         'worker_rho': worker_rho,
+        'worker_loc_mode': worker_loc_mode,
+        'worker_r_mu': worker_r_mu,
+        'worker_r_sigma': worker_r_sigma,
+        'rho_x_skill_ell_x': rho_x_skill_ell_x,
+        'rho_x_skill_ell_y': rho_x_skill_ell_y,
+        'rho_x_skill_r': rho_x_skill_r,
         'x_skill_mean': x_skill.mean(),
         'x_skill_std': x_skill.std(),
         'ell_x_mean': ell_x.mean(),
@@ -424,6 +552,9 @@ def construct_worker_dataset(
         'ell_y_mean': ell_y.mean(),
         'ell_y_std': ell_y.std(),
         'location_corr_empirical': empirical_corr,
+        'x_skill_ell_x_corr_empirical': corr_x_skill_ell_x,
+        'x_skill_ell_y_corr_empirical': corr_x_skill_ell_y,
+        'x_skill_r_corr_empirical': corr_x_skill_r,
         'a_skill_mean': a_skill.mean(),
         'a_skill_std': a_skill.std(),
         's_skill_mean': s_skill.mean(),
@@ -640,12 +771,15 @@ def main() -> int:
         firm_locations = firms_data['locations']
 
         fig, ax = plt.subplots(figsize=(8, 6))
-        ax.scatter(
+        worker_skill = worker_dataset["s_skill"].to_numpy(dtype=float)
+        worker_scatter = ax.scatter(
             worker_locations[:, 0],
             worker_locations[:, 1],
             s=10,
-            alpha=0.25,
-            label='Workers',
+            c=worker_skill,
+            cmap="cividis",
+            alpha=0.35,
+            label='Workers (skill-shaded)',
             edgecolors='none',
         )
         ax.scatter(
@@ -657,17 +791,113 @@ def main() -> int:
             color='red',
             label='Firms',
         )
+        firm_ids = firms_data.get('firm_ids', np.arange(1, firm_locations.shape[0] + 1))
+        for idx, (fx, fy) in enumerate(firm_locations):
+            label = firm_ids[idx] if idx < len(firm_ids) else idx + 1
+            ax.text(
+                fx + 0.15,
+                fy + 0.15,
+                str(label),
+                fontsize=10,
+                fontweight="bold",
+                color="red",
+                bbox=dict(facecolor="white", edgecolor="red", alpha=0.8, boxstyle="round,pad=0.2"),
+            )
         ax.set_xlabel('Worker x-location')
         ax.set_ylabel('Worker y-location')
         ax.set_title('Worker and Firm Locations')
         ax.legend(loc='best')
         ax.set_aspect('equal', adjustable='box')
+        cbar = fig.colorbar(worker_scatter, ax=ax, pad=0.02)
+        cbar.set_label('Worker skill')
 
         plot_path = out_dir / 'workers_firms_locations.png'
         fig.tight_layout()
         fig.savefig(plot_path, dpi=200)
         plt.close(fig)
         print(f"Location scatter saved to: {plot_path}")
+
+        if "chosen_firm" in worker_dataset.columns:
+            chosen_firm = worker_dataset["chosen_firm"].to_numpy(dtype=int)
+            outside_mask = chosen_firm <= 0
+            chosen_mask = ~outside_mask
+
+            fig, ax = plt.subplots(figsize=(8, 6))
+            if np.any(outside_mask):
+                ax.scatter(
+                    worker_locations[outside_mask, 0],
+                    worker_locations[outside_mask, 1],
+                    s=10,
+                    alpha=0.2,
+                    color="0.75",
+                    label="Outside option",
+                    edgecolors="none",
+                )
+            if np.any(chosen_mask):
+                firm_ids_unique = np.unique(chosen_firm[chosen_mask])
+                palette = _categorical_palette(firm_ids_unique.size)
+                color_map = {
+                    int(fid): palette[idx % len(palette)]
+                    for idx, fid in enumerate(firm_ids_unique.tolist())
+                }
+                chosen_colors = [color_map[int(fid)] for fid in chosen_firm[chosen_mask]]
+                ax.scatter(
+                    worker_locations[chosen_mask, 0],
+                    worker_locations[chosen_mask, 1],
+                    s=10,
+                    alpha=0.6,
+                    c=chosen_colors,
+                    edgecolors="none",
+                )
+
+            ax.scatter(
+                firm_locations[:, 0],
+                firm_locations[:, 1],
+                s=80,
+                marker='x',
+                linewidths=2,
+                color='black',
+                label='Firms',
+            )
+            firm_ids = firms_data.get('firm_ids', np.arange(1, firm_locations.shape[0] + 1))
+            for idx, (fx, fy) in enumerate(firm_locations):
+                label = firm_ids[idx] if idx < len(firm_ids) else idx + 1
+                ax.text(
+                    fx + 0.15,
+                    fy + 0.15,
+                    str(label),
+                    fontsize=9,
+                    fontweight="bold",
+                    color="black",
+                    bbox=dict(facecolor="white", edgecolor="black", alpha=0.8, boxstyle="round,pad=0.2"),
+                )
+            ax.set_xlabel('Worker x-location')
+            ax.set_ylabel('Worker y-location')
+            ax.set_title('Worker Locations Colored by Chosen Firm')
+            if "firm_ids_unique" in locals() and firm_ids_unique.size <= 12:
+                legend_handles = [
+                    Line2D([0], [0], marker='o', color='none', markerfacecolor=color_map[int(fid)],
+                           markersize=6, label=f"Firm {int(fid)}")
+                    for fid in firm_ids_unique
+                ]
+                if np.any(outside_mask):
+                    legend_handles.append(
+                        Line2D([0], [0], marker='o', color='none', markerfacecolor="0.75",
+                               markersize=6, label="Outside option")
+                    )
+                legend_handles.append(
+                    Line2D([0], [0], marker='x', color='black', markersize=7, label="Firms")
+                )
+                ax.legend(handles=legend_handles, loc='best', ncol=2)
+            else:
+                ax.legend(loc='best')
+            ax.set_aspect('equal', adjustable='box')
+
+            plot_path = out_dir / 'workers_firms_locations_by_choice.png'
+            fig.tight_layout()
+            fig.savefig(plot_path, dpi=200)
+            plt.close(fig)
+            print(f"Choice-colored location scatter saved to: {plot_path}")
 
         gamma_val = float(params.get('gamma', 0.05))
         alpha_val = float(params.get('alpha', 5.0))
@@ -780,17 +1010,26 @@ def main() -> int:
     summary_data = {
         'parameter': [
             'N_workers', 'mu_x_skill', 'sigma_x_skill', 'mu_a_skill', 'sigma_a_skill', 
-            'mu_s', 'sigma_s', 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x', 'worker_sigma_y', 'worker_rho',
+            'mu_s', 'sigma_s', 'worker_loc_mode', 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x',
+            'worker_sigma_y', 'worker_rho', 'worker_r_mu', 'worker_r_sigma',
+            'rho_x_skill_ell_x', 'rho_x_skill_ell_y', 'rho_x_skill_r',
             'x_skill_mean', 'x_skill_std', 'ell_x_mean', 'ell_x_std', 'ell_y_mean', 'ell_y_std',
-            'location_corr_empirical', 'a_skill_mean', 'a_skill_std', 's_skill_mean', 's_skill_std'
+            'location_corr_empirical', 'x_skill_ell_x_corr_empirical', 'x_skill_ell_y_corr_empirical',
+            'x_skill_r_corr_empirical',
+            'a_skill_mean', 'a_skill_std', 's_skill_mean', 's_skill_std'
         ],
         'value': [
             summary['N_workers'], summary['mu_x_skill'], summary['sigma_x_skill'],
             summary['mu_a_skill'], summary['sigma_a_skill'], summary['mu_s'], summary['sigma_s'],
-            summary['worker_mu_x'], summary['worker_mu_y'], summary['worker_sigma_x'], 
-            summary['worker_sigma_y'], summary['worker_rho'], summary['x_skill_mean'], summary['x_skill_std'],
+            summary['worker_loc_mode'], summary['worker_mu_x'], summary['worker_mu_y'],
+            summary['worker_sigma_x'], summary['worker_sigma_y'], summary['worker_rho'],
+            summary['worker_r_mu'], summary['worker_r_sigma'],
+            summary['rho_x_skill_ell_x'], summary['rho_x_skill_ell_y'], summary['rho_x_skill_r'],
+            summary['x_skill_mean'], summary['x_skill_std'],
             summary['ell_x_mean'], summary['ell_x_std'], summary['ell_y_mean'],
             summary['ell_y_std'], summary['location_corr_empirical'],
+            summary['x_skill_ell_x_corr_empirical'], summary['x_skill_ell_y_corr_empirical'],
+            summary['x_skill_r_corr_empirical'],
             summary['a_skill_mean'], summary['a_skill_std'], summary['s_skill_mean'], summary['s_skill_std']
         ]
     }

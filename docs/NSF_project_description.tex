@@ -1,0 +1,488 @@
+\documentclass[11pt]{article}
+\usepackage[margins=1in]{geometry}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{subcaption}
+\usepackage[subtle]{savetrees}
+
+\pagestyle{empty}
+
+\begin{document}
+\begin{center}
+{\centering \large \textbf{Project Summary%: \\ Endogenous Choice Sets, Screening Unobserved Skills, and Imperfect Competition in Labor Markets: Theory, Identification, and Applications
+}}
+\end{center}
+
+\noindent
+\textbf{Overview:}\\
+Understanding the sources of wage inequality and labor market power requires a careful accounting of the set of job opportunities available to each worker. Although recent research has made substantial progress in measuring employer market power and its role in wage inequality (e.g. Card 2022; Azar \& Marinescu 2024), most leading models implicitly assume that workers can freely choose among all employers in a market at posted wages (e.g. Card, Cardoso, Heining \& Kline 2018; Lamadon, Mogstad \& Setzler 2022). In practice, however, access to jobs is mediated by firm screening: employers evaluate and reject many applicants (Hoffman \& Stanton 2025).
+
+The absence of screening mechanisms in leading models permits several significant biases in our understanding of labor markets. First, firms' effective market power is mis-measured because the set of firms competing for a given worker is smaller than the number of employers in the market. Second, workers themselves may possess market power if their unobserved talents are scarce, creating upward pressure on wages that counteracts traditional wage markdowns. Third, when firms endogenously screen on worker-specific productivity, estimates of marginal revenue product of labor are biased. These measurement issues cascade throughout empirical analyses.
+
+This project pursues three goals. First, we integrate the conceptual framework from the empirical literature on two-sided matching markets (Agarwal 2015; Agarwal \& Somaini 2025) to develop an equilibrium model of labor markets featuring endogenous screening, worker-specific choice sets, and employer market power. Second, we apply this framework to linked employer-employee administrative data from the US to quantify the role of screening in the distribution of wages, markdowns, and productivity. Third, we demonstrate the policy relevance of the framework by examining how screening drives reallocation effects of increases in the minimum wage from quasi-experimental variation in Norwegian administrative data. 
+
+\medskip
+\noindent
+\textbf{Intellectual Merit:}\\ We synthesize insights from three traditionally separate literatures: the burgeoning set of equilibrium models of labor market power, the large body of evidence on screening and hiring strategies in personnel economics, and the methodological literature on empirical models of two-sided matching markets. We provide a comprehensive approach by incorporating unobserved skill and endogenous screening into a two-sided matching model of imperfectly-competitive labor market equilibrium. We develop an econometric approach that combines techniques from labor economics and industrial organization to recover the key model parameters and structure of the choice sets, exploiting both micro-level match data and market-level variation.
+
+\medskip
+\noindent
+\textbf{Broader Impacts:}\\ The project produces a new analytical tool for evaluating minimum wage policies, one of the most important and debated policy interventions for improving societal well-being. It trains graduate students, the future workforce, in an active and timely research area in STEM that combines methods from labor economics, industrial organization, and two-sided matching. We plan to disseminate findings to policymakers in Washington, D.C., to increase public scientific engagement and inform policies towards enhancing US competitiveness. 
+\thispagestyle{empty}\addtocounter{page}{-1}
+\pagebreak
+
+\begin{center}
+{\centering {\large \textbf{ Project Description \\
+Endogenous Choice Sets, Screening Unobserved Skills, and Imperfect Competition in Labor Markets: Theory, Identification, and Applications}} \\
+Nikhil Agarwal and Bradley Setzler}
+
+\end{center}
+
+Understanding the sources of wage inequality and labor market power requires a careful accounting of the set of job opportunities available to each worker.  Although recent research has made substantial progress in measuring employer market power and its role in wage inequality (e.g. Card 2022; Azar \& Marinescu 2024), most leading models implicitly assume that workers can freely choose among all employers in a market at posted wages (e.g. Card, Cardoso, Heining \& Kline 2018; Lamadon, Mogstad \& Setzler 2022). In practice, however, access to jobs is mediated by firm screening: employers evaluate applicants using interviews, tests, and other assessment tools and reject many otherwise observably-similar workers (Hoffman \& Stanton 2025). As a result, workers face idiosyncratic, skill-dependent choice sets that are not directly observed by the econometrician. Ignoring these endogenous choice sets risks mis-characterizing both the extent of labor market competition and the sources of wage dispersion.
+
+This project develops and applies a new framework for analyzing labor markets in which screening plays a central role in shaping equilibrium outcomes. We model labor markets as two-sided matching environments with heterogeneous firms and workers (Agarwal 2015; Agarwal \& Somaini 2025). Our model explicitly endogenizes wage setting and screening within this framework: firms choose wages and screening thresholds that jointly determine which workers are hired. Screening allows firms to adjust workforce quality independently of wages, while wages remain the primary instrument for attracting applicants. This separation has first-order implications for labor supply elasticities, worker sorting, and the measurement of wage markdowns. In particular, firms’ effective market power depends not only on the elasticity of employment with respect to wages, but also on how wages shape the skill composition of applicants and hires.
+
+The framework delivers several conceptual advances relative to existing models of imperfect competition. First, it endogenizes worker-specific choice sets as the outcome of firm screening decisions, rather than treating them as exogenous or assuming full access. Second, it identifies a novel source of worker market power: when high-skill workers are scarce and disproportionately responsive to wages, firms optimally raise wages to attract talent, partially offsetting standard monopsony forces. Third, it shows that conventional approaches to estimating marginal revenue products of labor and wage markdowns can be systematically biased when firms adjust screening thresholds in response to productivity shocks or policy interventions. These insights are essential for interpreting both descriptive patterns in administrative data and causal estimates used in policy analysis.
+
+Beyond theory, the project makes several empirical contributions. We develop an econometric strategy that combines micro-level employer-employee match data with market-level equilibrium restrictions to separately identify worker preferences, unobserved skills, firm amenities, productivity, and screening thresholds. The approach adapts tools from demand estimation and two-sided matching to the labor market context, making it feasible to estimate with large linked administrative datasets while maintaining a clear economic interpretation.
+
+We apply the model in two complementary empirical settings. First, using US administrative employer-employee data, we quantify how screening reshapes worker sorting, the distribution of wages, and measured employer market power, and we assess the magnitude of bias that arises when screening is ignored in conventional monopsony estimates. Second, we demonstrate the policy relevance of endogenous screening by studying minimum wage increases in Norway using quasi-experimental variation from collective bargaining extensions (Bhuller, Segiet \& Vestad 2025). Whereas standard analyses focus on wage and employment responses, our framework highlights firms’ endogenous adjustments in hiring standards. We show how binding wage floors induce systematic skill upgrading through tighter screening and how these responses mediate the effects of minimum wages on employment, productivity, and reallocation across firms.
+
+Taken together, the theoretical and empirical components provide a unified and policy-relevant approach to understanding labor market power, screening, choice sets, and wage determination.
+
+\section{A Model of Labor Market Screening}
+
+We now present a framework for incorporating labor market screening into an equilibrium model of many-to-one matching of workers to jobs in which firms differ in unobserved productivity and workers differ in unobserved skill.
+
+\subsection{Notation and Timing}
+
+We begin by describing the broad structure of the model. Each worker $i$ and firm $j$ belong to a single market. A market could be the combination of a geographic region and an industry or occupation. Only workers who meet observable qualifications, such as occupational certifications, belong to the market. Worker $i$'s unobserved skill is denoted by $q_i$. For simplicity, we restrict attention to the case where $q_i$ is scalar, but consider multi-dimensional skill in an extension. We denote worker $i$'s indirect utility for firm $j$ by $U_{ij}$. The labor market proceeds as follows:
+\begin{enumerate}
+    \item \underline{Wage posting:} Firms $j \in \{0,\ldots,J\}$ simultaneously post wages $w_j$.\footnote{We suppress the market index and assume each market equilibrium is solved independently of other markets. Below, we discuss an extension in which occupations may be complements or substitutes in production, in which case, occupational markets must be solved simultaneously.}
+    \item \underline{Screening:} Firms evaluate applicants and reject those who fail to meet a skill screening threshold $\bar{q}_j$. That is, worker $i$ who applies for  job $j$ will be accepted only if $q_i \geq \bar{q}_j$. 
+    \item \underline{Matching:} Each worker $i$ is  frictionlessly matched to her most preferred firm in her choice set,  
+where the choice set is $O(q_i) \equiv \{ j \in J \mid q_i \geq \bar{q}_j \}.$ That is, worker $i$'s match $\mu(i)$ is given by $\arg\max_{k \in O(q_i)} U_{ik}.$
+    \item \underline{Production:} Production occurs as a function of the total effective units of skill
+$$ H_j = \int q_i \cdot \mathbb{I}\left(j = \arg\max_{k \in O(q_i)} U_{ik} \right) dG,$$
+\end{enumerate}
+where $G$ is the joint cumulative distribution function of $U_i = (U_{i1},\ldots, U_{iJ})$ and $q_i$. Relative to existing empirical models of monopsony, the key differences are the screening threshold in step 2 and the resulting worker-specific choice sets in steps 3-4. Importantly, the wage is posted in step 1 to attract applicants, but is not updated once applicant skill is revealed in step 2, which rules out that firms bargain individually with each new hire.\footnote{The ``no bargaining" assumption is standard in the recent monopsony literature for several reasons, as discussed by Weil (2014) and Kline (2025). First, bargained wages can create horizontal pay inequities that lower morale and productivity among workers in equivalent roles (Card, Mas, Moretti \& Saez 2012; Breza, Kaur \& Shamdasani 2018). Second, standardizing wages based on observables provides a safe harbor against legal restrictions on wage discrimination, such as the US Equal Pay Act of 1963. Finally, screening a marginal applicant is costly  and firm-specific (Stanton \& Thomas 2025). It is difficult to rationalize bargaining against skill-dependent outside options when skill information is private.} Our empirical approach allows for wage personalization on observables, but not on the component of skill that is revealed during the screening process.   
+
+\underline{Labor Supply:} The supply of workers to jobs is determined by the utility that workers would receive from jobs.  Denoting the vector of wages in the market by $\mathbf{w}$ and skill thresholds by $\mathbf{\bar{q}}$, the labor supply for firm $j$ is the set of workers for whom $j$ is the most preferred firm in their choice set, $\{i: j = \arg\max_{k \in O(q_i)} U_{ik} \}$. There will be two useful projections of this set:
+$$
+L_j(\mathbf{w}, \mathbf{\bar{q}}) = \int \mathbb{I}\left(j = \arg\max_{k \in O(q_i)} U_{ik} \right) dG, \quad \text{and} \quad 
+Q_j(\mathbf{w}, \mathbf{\bar{q}}) = \frac{1}{L_j} \int q_i \cdot \mathbb{I}\left(j = \arg\max_{k \in O(q_i)} U_{ik} \right) dG,
+$$
+where $L_j(\cdot)$ and $Q_j(\cdot)$ are respectively the total quantity and the average skill of supplied labor.
+
+\underline{Labor Demand:} The demand of firms for workers is determined by a revenue production function that aggregates skills across its set of employees. For tractability, we follow Lamadon, Mogstad \& Setzler (2022) in specializing to a perfect-substitutes revenue production function across skill levels, $R_j = A_j F(H_j)$, where $H_j \equiv L_j Q_j$ is the efficiency units of labor and $A_j$ is a TFP shock. The dependence of production on capital and materials will be incorporated into empirical applications where applicable, but is suppressed for simplicity of exposition. There are two useful concepts of the marginal revenue product of labor:  
+$\frac{\partial R_j}{\partial L_j}$  and $\frac{\partial R_j}{\partial H_j}$. 
+The former is marginal revenue of employment size, holding average skill fixed, and the latter is marginal revenue of total efficiency units of skill. They are related by  $ \frac{\partial R_j}{\partial L_j} = Q_j \frac{\partial R_j}{\partial H_j}$.
+
+\subsection{Model Equilibrium}
+ 
+
+Firm $j$ maximizes the revenue minus the total wage bill:
+$$
+\max_{w_j, \bar{q}_j} \quad \Pi_j(\mathbf{w}, \mathbf{\bar{q}}) = A_j F \left( H_j(\mathbf{w}, \mathbf{\bar{q}}) ) \right) - w_j L_j(\mathbf{w}, \mathbf{\bar{q}}),
+$$
+holding the wages $w_{-j}$ and cutoffs $\bar q_{-j}$ of the other firms fixed. The equilibrium is characterized by two key first-order conditions (FOCs) regarding wages and screening.\footnote{We can also micro-found the equilibrium as a two-sided stable match.} The presence and endogeneity of screening thresholds differentiates our framework.\footnote{Recent handbook chapters by Kline (2025) and Mas (2025) discuss the possibility that wages are simultaneously used to attract workers and to shift the average skill of those workers, maintaining a single wage FOC. By contrast, we introduce distinct FOCs for wages and screening thresholds, allowing the firm to shift the  average skill of its workforce while holding the wage fixed.} 
+
+First, we interpret the wage FOC, which equates the marginal change in revenue, $\frac{dR_j}{dw_j}$, to the marginal change in the wage bill, $L_j + w_j \frac{\partial L_j}{\partial w_j}$. Using the chain rule, the marginal change in revenue from increasing wages is
+\begin{eqnarray}
+    \frac{dR_j}{dw_j} = \frac{\partial R_j}{\partial H_j}\left(Q_j\frac{\partial L_j}{\partial w_j} + L_j\frac{\partial Q_j}{\partial w_j}\right),
+\end{eqnarray}
+where we typically expect (but do not impose) that $\frac{\partial L_j}{\partial w_j}>0$, $\frac{\partial Q_j}{\partial w_j}>0$. This expression highlights that an increase in the wage of firm $j$ has two first-order effects. The first is to increase labor holding the average skill $Q_j$ fixed, and the second is to raise average skill. This second channel, which has been discussed using stylized models by Kline (2025) and Mas (2025), is missing from existing empirical models of and applications to imperfectly competitive labor markets.
+ 
+
+Equating marginal revenue and marginal cost yields the following Lerner index:
+\begin{equation}
+    \frac{\frac{\partial R_j}{\partial L_j}-w_j}{\frac{\partial R_j}{\partial L_j}}=\frac{1}{1+\varepsilon_j^L} - \frac{ \varepsilon_j^Q}{1+\varepsilon_j^L}, \label{eq:wage_foc}
+\end{equation} 
+where $\varepsilon_j^L = \frac{d\ln L_j}{d\ln w_j}$ is the wage elasticity of labor supply and $\varepsilon_j^Q = \frac{d\ln Q_j}{d\ln w_j}$ is the wage elasticity of average skill. This result shows that the firm's markdown is governed not only by the standard labor supply elasticity, $\varepsilon_j^L$, but also by the elasticity of skill composition, $\varepsilon_j^Q$. In the special case in which workers are homogenous, $\varepsilon_j^Q=0$, this expression reduces to the standard Lerner index from the monopsony literature, $1/(1+\varepsilon_j^L)$. By contrast, when high-skill workers are more responsive to wages ($\varepsilon_j^Q > 0$), the firm sets a higher wage (lower markdown) to retain the most productive talent. Thus, $\varepsilon_j^Q$ can be interpreted as a measure of worker market power derived from the scarcity of high-skill workers, serving as a countervailing force to the employer market power derived from $\varepsilon_j^L$.\footnote{As noted by Kline (2025), the prediction that applicant quality is increasing in the offered wage has been empirically corroborated both experimentally in public sector jobs (Dal Bó, Finan \& Rossi 2013) and observationally in online labor markets (Marinescu \& Wolthoff 2020; Escudero, Liepmann \& Vergara 2024).}
+
+The second FOC characterizes the marginal benefit and cost of raising the screening threshold:
+\begin{equation}
+    \frac{\partial \Pi_j}{\partial \bar{q}_j} = \frac{\partial R_j}{\partial H_j}\frac{\partial H_j}{\partial \bar q_j}  - w_j \frac{\partial L_j}{\partial \bar q_j} = 0.
+\end{equation}
+Marginally increasing the threshold $\bar q_j$ by $\Delta$ changes the mass of workers at the margin of the cutoff (skill $q_i = \bar{q}_j$) by $\Delta \frac{\partial L_j}{\partial \bar q_j}$. Thus, the change in total skill is $\Delta \bar q_j \frac{\partial L_j}{\partial \bar q_j}$ and the effect on average skill $H_j$ is $ \frac{\partial H_j}{\partial \bar{q}_j} = \bar{q}_j\frac{\partial L_j}{\partial \bar{q}_j}$. Relating the optimal wage and screening threshold, we have $w_j = \frac{\partial R_j}{\partial H_j} \bar{q}_j,$ where the right-hand side can be interpreted as the marginal revenue product of a worker of the marginal skill type $\bar q_j$. This reveals that while the firm extracts rents from the \textit{average} worker (as shown in the Lerner index), it pays the \textit{marginal} hire---the least-skilled worker offered a job---exactly her marginal revenue. Thus, in contrast to much of the literature, there is dispersion in markdowns within the firm across workers paid similar wages.
+
+
+
+\subsection{Relationship to Literature}
+
+Equilibrium wage-posting models with imperfect competition and two-sided heterogeneity---firms differ in productivity and workers differ in skill---include those of Card, Cardoso, Heining \& Kline (2018); Sorkin (2018); Lamadon, Mogstad, \& Setzler (2022); Chan, Kroft, Mattana \& Mourifie (2025); Lindner, Murakozy, Reizer \& Schreiner (2022); and Morchio \& Moser (2025).  In this literature, the source of information asymmetry is that firms cannot observe the \emph{preferences} of individual workers---markdowns reflect preference dispersion. We introduce a second information asymmetry:  firms do not ex ante observe the \emph{skills} of individual workers. Furthermore, we introduce a human resources mechanism---screening---such that firms can uncover the skills of their applicants. Then, markdowns reflect both preference and skill dispersions among observably-similar workers. 
+
+Our approach is motivated by and grounded in the evidence from personnel economics. Per Hoffman \& Stanton (2025), ``Numerous studies document that substantial productivity differences exist at the individual level for workers doing the exact same job in the exact same
+setting.... Productivity variation also appears to dwarf pay differences for workers at the same level." Our model can rationalize large within-job skill dispersion without correspondingly large pay differences. Personnel economics has also documented that firms use rich screening instruments and interviewing strategies to uncover the skill of applicants. These pre-hire assessments predict match quality or job suitability (e.g. Hoffman, Kahn \& Li 2018). Additionally, our model assumes that workers have information about their own suitability for a job, consistent with the finding by Horton, Johari \& Kircher (2021) that workers target jobs that match their skill. %Finally, our model is well-suited for simulating the equilibrium impacts of the emergence of AI hiring algorithms, which affect the uniformity of screening thresholds across employers (Li, Raymond \& Bergman 2025).
+
+
+
+
+
+
+
+\section{Empirical Model, Identification, and Estimation}\label{sec:model}
+
+\subsection{Empirical Model}
+
+\underline{Worker Preferences:} \textit{Non-parametric Specification.} We begin with a general specification of worker preferences that nests models from the labor and IO literatures. Worker $i$'s indirect utility from employment at firm $j$ takes the form
+$$U_{ij} = u(w_j, x_j, \xi_j, \varepsilon_i) - g(d_{ij}),$$
+where $u(\cdot)$ is a function of the wage $w_j$, observed firm characteristics $x_j$, unobserved firm characteristics $\xi_j$, and a vector of worker-specific taste shifters $\varepsilon_i$; the function $g(\cdot)$ is increasing in commuting distance $d_{ij}$. The value of unemployment is normalized to zero. 
+
+The vector $\varepsilon_i$ enters $u(\cdot)$ to accommodate rich heterogeneity in worker preferences, including random coefficients on wages and amenities as well as additive firm-specific taste shocks. This structure generates horizontal differentiation through two channels: workers differ in their proximity to employers, captured by $g(d_{ij})$, and in their preferences over firm attributes, captured by $\varepsilon_i$. Vertical differentiation arises from firm-level attributes---wages, observable amenities $x_j$, and unobservable amenities $\xi_j$---which are valued differently by workers depending on $\varepsilon_i$.
+ 
+ 
+
+\textit{Parametric Specification.} To fix ideas, consider the following simple preferences:
+\begin{equation}
+    U_{ij} = \delta_j - \tau d_{ij} + \varepsilon_{ij}, \quad \text{where} \quad \delta_j \equiv \eta \ln w_j + \xi_j.
+\end{equation}
+Here, $\eta > 0$ measures sensitivity to log wages, $\tau > 0$ measures the disutility of commuting, and $\varepsilon_{ij}$ has the standard Gumbel distribution. This specification encompasses common specifications from the structural monopsony literature when $\tau=0$ (e.g. Card, Cardoso, Heining \& Kline 2018), while permitting observable horizontal differentiation due to commuting distance when $\tau > 0$. 
+
+\underline{Worker Skill and Production:} Following Agarwal (2015), we parametrize (the log of) worker skill as a sum of observable and unobservable components:
+$$
+\ln q_i = v_i \gamma + e_i, 
+$$
+where, with a slight abuse of notation, $v_i$ denotes an observed proxy for worker skill and $e_i$ denotes unobserved worker skill, with a distribution given by the CDF $G_e$. Examples of $v_i$ could include measures of education, skill, or lagged wages.
+
+To fix ideas, parameterize $F(H_j) = H_j^{(1-\alpha)}$ with $\alpha \in (0,1)$ to permit decreasing returns to scale technology. With this parametrization, the screening first-order condition implies, 
+$$\ln \bar q_j = \ln w_j -  \ln A_j - \ln (1-\alpha) + \alpha \ln H_j$$ 
+In settings with richer production data, we can estimate  a richer production function, following for example Yeh, Macaluso \& Hershbein (2022).
+
+
+
+\underline{Observed Matches:} The empirical model yields the following match probabilities:
+\begin{equation}
+    \begin{split}
+    \sigma_j(v_i,d_i) &= P\left(i\text{ matches with }j| v_i, d_i\right) = \sum_{O\subseteq \mathcal J, j\in O} P\left(O(q_i) = O | v_i \right) P\left(j = \arg\max_{k\in O} U_{ik} | d_i\right) \\
+                    &= \sum_{O\subseteq \mathcal J, j\in O} \left[G_e\left(\min_{k\not\in O} \ln \bar q_k - \gamma v_i\right) - G_e\left(\max_{k\in O} \ln \bar q_k - \gamma v_i\right)\right]  \dfrac{\exp(\delta_j - \tau d_{ij})}{1+\sum_{k\in O} \exp(\delta_k- \tau d_{ik})}
+    \end{split}
+    \label{eq:shares}
+\end{equation}
+The left-hand side term, $\sigma$, is the employer's market share conditional on observable skill type $v_i$ and employee distance vector $d_i$. The second equality follows from independence of $e_i$ and $\varepsilon_i$, and the third equality from our parametric assumptions.
+
+An important challenge relative to the prior literature on labor market monopsony is that the market shares cannot be inverted directly to yield $\delta$ because of the confounds arising from screening. In other words, the largest firms need not be the most desirable ones because smaller ones could simply be imposing more stringent screening thresholds. We now discuss an identification strategy that accounts for screening.
+
+\subsection{Identification}
+
+The key objects of interest are the marginal revenues of labor and skill, $\frac{\partial R_j}{\partial L_j}$ and $\frac{\partial R_j}{\partial H_j}$, and the corresponding supply elasticities, $\varepsilon_j^L$ and $\varepsilon_j^Q$. These quantities in turn depend on the primitives of the model, namely the production function $F(\cdot)$ and the joint distribution of $U_i$ and $q_i$ as a function of the observables $v_i$, $\{w_j\}_{j=1}^J$ and $\{d_{ij}\}_{j=1}^J$; unobserved amenities $\{\xi\}_{j=1}^J$; and TFP shocks $\{A_j\}_{j=1}^J$. Identifying these primitives will also allow us to study non-local counterfactual experiments, such as a large minimum wage increase.
+
+The identification argument proceeds in two steps. In the first step, we identify $\gamma$, parameters of $G_e$, and the fixed effects $\{\delta_j\}_{j=1}^J$ and $\{\bar q_j\}_{j=1}^J$, where $\bar q_j$ is identified up to location and scale. These parameters govern the distributions of $U_i$ and $q_i$ and determine the matches observed in the data, specifically the market shares for workers of observed skill type $v$. The challenge is to disambiguate preferences and skills as the determinants of matches. He, Sinha \& Sun (2024) and Agarwal \& Somaini (2025) show that variation in $v_i$ and $d_i$ (assuming orthogonality with $\{\varepsilon_{ij}\}_{j=1}^J$ and $e_i$) can be used to non-parametrically identify a two-sided matching model.\footnote{We have extended Theorem 1 in Agarwal \& Somaini (2025) to the case in which skills $q_i$ are scalars as opposed to firm-specific.
+Correspondingly, our shifter $v_i$ and the unobserved component of skill $e_i$ are also worker-specific.} Intuitively, the expression for $\sigma(v_i,d_i)$ shows that $v_i$ only shifts choice sets while $d_i$ only shifts preferences conditional on choice sets.
+
+In the second step, we seek to identify the parameters $\alpha, \eta$. The key challenge is that wages $\ln w_j$ are endogenous due to correlation with both $A_j$ and $\xi_j$. We require the researcher to provide instruments $z_j = (z_j^1, z_j^2)$ that satisfy two moment conditions:
+\[   \mathbb E[\xi_j | z_j^1]=0 \quad \text{and} \quad \mathbb E[A_j|z_j^2] =0.\]
+Similar instrument requirements are familiar from the literature on demand estimation (Berry, Levinsohn \& Pakes 1995; Berry \& Haile 2014). Agarwal \& Somaini (2025) derive identification results using these instruments in a two-sided matching model. The literature on labor market monopsony commonly uses revenue productivity shifters (Kline, Petkova, Williams \& Zidar 2019; Garin \& Silverio 2024; Kroft, Luo, Mogstad \& Setzler 2025) or production function-based TFP moments (Lamadon, Mogstad \& Setzler 2022; Chan, Kroft, Mattana \& Mourifie 2025) for the condition on $z_j^1$, assuming that unobserved firm-level amenities do not respond to changes in TFP.
+
+\subsection{Estimation}
+
+Our estimation procedure builds on the literature on estimating consumer demand and preferences in two-sided matching markets. While the logit special case is not essential, we will work with it initially for simplification. The procedure relies on three sets of moments:
+\begin{enumerate}
+    \item Micro-level (employer-employee) match moments that leverage variation in distance $d_i$ and shifters of choice sets $v_i$:
+        \[  \mathbb E \big[  \sum_j \mathbb I\{i \text{ matches with } j\}\nabla_\theta \ln\sigma_j(v_i,d_i) \big|  v_i, d_i \big] = 0,\]
+    where $\theta$ collects all the parameters of the model, including the fixed effects $\delta_j$ and $\bar q_j$. These moments are the likelihood scores of the observed matches in the data.
+
+    \item Macro moments from labor supply:
+        \[ \mathbb E\left[ \delta_j - \eta\ln w_j\left| \{z_j^1\}_{j=1}^J \right.\right] = 0.\]
+        This set of moments is analogous to those used in demand estimation (e.g. Berry, Levinsohn \& Pakes 1995). The literature on labor market monopsony commonly instruments these using a variable orthogonal to amenities, such as total factor productivity (TFP) shocks. If observed, exogenous amenities $x_j$ may also serve as moments.
+        
+    \item Macro moments from screening: 
+     \[ \mathbb E\left[ \ln \bar q_j - \ln w_j + \ln (1-\alpha) - \alpha \ln H_j \left| \{z_j^2\}_{j=1}^J \right. \right] = 0.\]
+    This set of moments is based on assuming optimal screening and that $\mathbb E \left[\ln A | \{z_j^2\}_{j=1}^J \right]=0$. This approach requires an instrument $z^2_j$ for productivity shocks. An alternative to using instruments is to use a control function for $A_j$ by relying on production data and using an approach that adapts Ackerberg, Caves \& Frazier (2015). In particular, we can use that $\ln A_j = \ln R_j - (1-\alpha) \ln H_j,$ where $H_j$ is implied as a function of the parameters that are pinned down based on the micro moments, allowing measurement or optimization errors.%\footnote{In this case, the moment condition becomes $ \mathbb E\left[ \ln \bar q_j - \ln w_j + \ln (1-\alpha) -  \ln H_j + \ln \tilde{R}_j | w_j, \tilde{R}_j, L_j \right] = 0,$ which can be derived by assuming that $\tilde{R}_j = A_j F(H_j) \exp(\varepsilon_j)$ where $\varepsilon_j$ is either an ex-post shock to output or measurement error that is mean independent of inputs and wages as in Ackerberg, Caves \& Frazier (2015).}
+\end{enumerate}   
+
+Grieco, Murry, Pinkse \& Sagl (2025) show how to optimally combine micro and macro moments of this form to minimize a mixed GMM-Likelihood objective function $\Sigma(\theta)$ that appropriately weights the different sets of moments to yield an efficient estimator. Our context differs from theirs in that we have two sets of firm-level fixed-effects, $\delta_j$ and $\bar q_j$, instead of only the former. We have already developed such an estimator that searches over the screening thresholds $\bar q_j$ for all the firms as well as the other parameters, while concentrating out $\delta_j$ using a contraction mapping built on equation (\ref{eq:shares}). When applied to simulated data, we find that it scales and performs well as market size increases. Note that the model is over-identified---marginal revenue product of labor is identified from the optimal screening threshold via the implication in the third moment above, or from restrictions on the marginal revenue product of labor via equation (\ref{eq:wage_foc})---so we can formally test the model specification.
+
+We can also use the model to provide tests of labor market conduct, an area of active research (e.g. Roussille \& Scuderi 2025; Delabastita \& Rubens 2025). The goal of this literature is to discern whether employers behave as atomistic competitors for labor (ignoring competitors' responses) or oligopsonistic (leveraging market share), as well as whether or not firms collude in their wage-setting. These tests are built on comparing the fit of equation (\ref{eq:wage_foc}) for alternative conduct assumptions using Rivers \& Vuong (2002) test statistics, similarly to Backus, Conlon \& Sinkinson (2021) for ready-to-eat cereal.
+
+\section{The US Distribution of Markdowns and Labor Sorting}
+
+In the first empirical application, we analyze employer-employee administrative panel data from the US Census Bureau. The goal here is to understand how the distribution of markdowns and the sorting of workers to firms is affected by screening and mis-measured when screening is ignored. 
+
+
+\subsection{US Data Access}
+
+The empirical analyses are primarily built on US Census LEHD employer-employee earnings records from 28 states over 2000-2022. The LEHD has previously been analyzed by, e.g. Sorkin (2018). The key variables are the worker and employer identifiers and the quarterly earnings for each worker-employer match. We link these records to production data from five quinquennial Economic Censuses as well as the Census LBD. The key variables are revenues, total employment, and total earnings at the establishment- and firm-level. 
+
+Our project has already received approval from the Census Bureau under Project Number 2567. The Census will review our data product to ensure appropriate access, use, and disclosure avoidance protection. Individual records are de-identified. All research will be performed at a Federal Statistical Research Data Center. Both PIs already have Special Sworn Status (SSS).  
+
+
+
+% \subsection{Simulation Study: Markdowns with and without Screening}
+
+% Because we do not currently have disclosed results from our application to the US Census data, we illustrate our planned analyses using a simulation study. 
+% Our simulation illustrates how screening can affect markdowns and labor allocation and, in turn, bias conventional measures of labor market power. Two firms compete to hire workers of heterogeneous skill. Firms are distinguished by labor productivity and their proximity to skilled workers. They share a production technology with diminishing returns. Firm $H$ has high labor productivity, while firm $L$ is less productive, so $A_H>A_L$. Workers who live near firm $H$ tend to be higher skilled, and average worker skill declines along the distance from $H$ to $L$. Workers choose between firms $H$ and $L$, as well as the outside option. Workers of all skills prefer higher wages and shorter commutes. In what follows, we use the functional forms described in section \ref{sec:model}. \footnote{Specifically, we simulate an economy with 2 firms and 1000 workers on a plane. On the firm side, we set $A_H=1.2$ and $A_L=0.8$. Firm $H$ is located at $(2.5,2.5)$ and firm $L$ at $(-2.5,-2.5)$. The returns to scale parameter is $\alpha=0.2$. On the worker side, we set $\eta=10$ for the utility coefficient on log wages and $\tau=0.4$ for the disutility coefficient on distance. Workers are drawn from a joint distribution of skill and location described by $$(q_i,\ell_{ix},\ell_{iy})'\sim N\left((10, 0,0)',\begin{pmatrix}5& 3& 2.4\\ 3& 25& 0\\2.4&0&16 \end{pmatrix} \right)$$.}
+
+% Figure \ref{fig:markdowns} illustrates equilibrium markdowns with and without screening. The equilibrium without screening requires that firms accept all workers who apply at posted wages. Expressing firm cutoffs in quantiles of the worker skill distribution, the no screening equilibrium amounts to setting $\bar q_j=0$ for $j=H,L$. Though unable to screen applicants by skill, firm $H$ exploits its labor market power to set a wage about 27\% below its average worker's marginal revenue, as shown by the solid gray bar and marker. Firm $L$'s markdown is less than half as large, a discrepancy explained by firm $H$'s proximity to high-skill workers.
+% \begin{figure}
+%     \centering
+%     \includegraphics[width=0.75\linewidth]{NSF/exhibits/markdowns_011326.pdf}
+%     \caption{Markdowns and screening}
+%     \label{fig:markdowns}
+% \end{figure}
+
+% Relative to the textbook labor market power model with no differentiation in worker skill, these markdowns incorporate heterogeneous skill through the effect of wages on worker quality. Measured as a percent of the marginal revenue of labor, conventional wage markdowns are determined by the inverse elasticity of labor supply in the formula $1/(1+\varepsilon_j^L)$. With heterogenous skill, the firm's wage first order condition in equation \eqref{eq:wage_foc} reflects both the conventional markdown, $1/(1+\varepsilon_j^L)$, and the effect of worker market power due to skill scarcity, $-\varepsilon_j^Q/(1+\varepsilon_j^L)$. 
+
+% To distinguish these forces, Figure \ref{fig:markdowns} also plots conventional markdowns. Firm $L$'s true markdown is around 2 percentage points lower than implied by the conventional markdown measure. Motivated to attract distant, high-skill workers, firm $L$ sets a higher wage and lower markdown relative to a scenario without differences in worker skill. For firm $H$, by contrast, a wage increases disproportionately attracts distant applicants, who are lower-skill than incumbent workers. Without the ability to screen low-skill applicants, firm $H$'s markdown is around 5 percentage points higher than the conventional markdown measure. 
+
+% To illustrate how screening may affect labor market outcomes, Figure \ref{fig:markdowns} also displays markdowns when firms choose both wages $w_j$ and skill cutoffs $\bar q_j$. Screening increases markdowns, as both firms economize on wage costs for their lowest productivity workers. This effect is especially pronounced for firm $L$, which is nearby low-skill workers and screens out the least skilled 2/3rds of workers. Higher productivity firm $H$ enjoys higher returns to effective units of skill and sets a more lenient cutoff that screens out only the bottom 46\% of workers. Taking these cutoffs together, screening limits competition for low- and medium-skill workers: the bottom 46\% qualify for no firm and the next 21\% are limited to firm $H$. Decomposing the markdown into the conventional and heterogenous skill components shows that firm $H$ contends with substantial worker market power. In contrast to the equilibrium without screening, firm $H$ posts a higher wage and rejects low-skill workers among the distant applicants who respond to wage increases. As a result, Firm $H$'s markdown is around 6 percentage points lower than than conventional measure suggests. 
+
+
+% \subsection{Simulation Study: Estimation and Bias}
+
+% When firms screen applicants by skill, conventional markdown estimators may mis-measure labor market power. Conclusions about markdowns and labor market power are typically drawn from estimates of firms' wage elasticities of labor supply, $\varepsilon_j^L$. Labor supply elasticities, in turn, are often calculated using the pass-through of a productivity shock $dA_j$ to wages and employment (Kline, 2025). Specifically, the pass-through estimator of the wage elasticity of labor supply is
+% \[
+% \hat\varepsilon_j^L=\frac{d\log L_j/dA_j}{d\log w_j/dA_j}.
+% \]
+% The markdown implied by this pass-through estimate is $1/(1+\hat\varepsilon_j^L)$. 
+
+% When firms screen workers of heterogeneous skill, however, the pass-through markdown estimator may be biased. First, conventional markdowns based only on labor supply elasticities do not consider skill heterogeneity and worker market power. Second, firms may adjust wages and latent screening cutoffs simultaneously. A firm with elevated demand for effective units of skill grows both by raising its wage and by accepting lower-skill applicants. In this case, the relative pass-through of productivity to employment and wages measures both the movement along the firm's labor supply curve with a given skill cutoff, and the outwards shift in the firm's labor supply curve as it accepts more workers at a given wage. Pass-through estimates of labor supply elasticities that attribute observed changes in employment to wages alone may generate biased markdown estimates and misleading conclusions about labor market power.
+
+% We illustrate the potential for bias in conventional markdown estimates in the simple simulation study described above. We compare true wage markdowns in an equilibrium with screening to those implied by the pass-through estimator of labor supply elasticities. The latter is calculated by simulating each firm's response to a small positive productivity shock, holding the other firm's wage and cutoff fixed at equilibrium values. These markdowns are best thought of as optimistic benchmarks for the actual performance of pass-through estimators, which typically pool variation over many firms and contend with other practical challenges.
+
+% Figure \ref{fig:markdowns} displays the resulting markdowns implied by pass-through estimator of labor supply, $\hat\varepsilon_j$. These are substantially biased downwards when firm screen. Firm $H$'s markdown is estimated to be around 3 percentage points lower than its true markdown, and for firm $L$ the figure is about 4 percentage points too low. Based on estimates that do not account for screening, the conventional procedure would understate the extent of labor market power. 
+
+% In the presence of screening, the pass-through estimator of labor supply elasticities exhibits considerable biased. This is evidenced by the wide gap between the conventional markdown, $1/(1+\varepsilon_j)$, and the markdown implied by the pass-through estimator of labor supply, $1/(1+\hat{\varepsilon}_j),$ in the screening equilibrium. To meet a positive labor demand shock, firms both increase wages and reduce cutoffs. The pass-through estimator conflates more lenient screening with more elastic response to wage increases among a fixed set of worker. This overestimates the labor supply elasticity and underestimates wage markdowns. When firms cannot screen, though, the pass-through estimator is unbiased for the labor supply elasticity, a result that can be seen in the no screening equilibrium. Despite correctly estimating the labor supply elasticity without screening, the conventional markdown implied by the pass-through estimator remains biased due to the omitted skill elasticity term in the true markdown. By incorporating firm screening responses to productivity shocks using measures of worker skill, the estimation procedure in section \ref{sec:model} avoids both biases.
+
+
+
+
+
+\subsection{Simulation Study: Markdowns with and without Screening}
+
+Because we do not currently have disclosed results from the US Census data, we illustrate several components of our planned analyses using a simulation study. In particular, we consider a simulated equilibrium consisting of two firms---one with high labor productivity and one with low productivity---competing for workers across a spatial skill gradient.\footnote{Specifically, we simulate an economy with 2 firms and 1,000 workers on a plane. We set $A_{high}=1.2$ and $A_{low}=0.8$ with returns to scale $\alpha=0.2$. On the worker side, $\eta=10$ for the utility coefficient on log wages and $\tau=0.4$ for the disutility coefficient on distance. Workers are drawn from a joint distribution of skill $q_i$ and location coordinates $(\ell_{ix}, \ell_{iy})'$ representing horizontal and vertical position. The distribution is $(q_i, \ell_{ix}, \ell_{iy})' \sim N(\mu, \Sigma)$, where $\mu = (10, 0, 0)'$ and $\Sigma = \begin{pmatrix}25 & 7.5 & 6 \\
+7.5 & 25 & 0 \\
+6 & 0 & 16 \end{pmatrix}$, capturing the spatial skill gradient.} In this setup, average worker skill is highest near the high-productivity firm and declines toward the low-productivity firm. In the equilibrium without screening, where firms must accept all applicants at posted wages, the high-productivity firm sets a wage approximately 27\% below its average worker’s marginal revenue. Because wage increases for this firm disproportionately attract distant, lower-skill applicants, it faces a negative elasticity of skill, resulting in a markdown 5 percentage points (pp) higher than the conventional measure of $1/(1+\varepsilon_j^L)$ would suggest. Conversely, the low-productivity firm faces a positive elasticity of skill because its wage increases attract high-skill workers from the other firm’s vicinity, placing its true markdown 2pp below the conventional measure. These results can be seen by comparing the ``True markdown" to the ``Conventional markdown" points among the ``No screening" bars in Figure \ref{fig:markdowns}. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\linewidth]{NSF/exhibits/markdowns_011326.pdf}
+    \caption{Simulation Study: Markdowns and Screening}
+    \label{fig:markdowns}
+\end{figure}
+
+
+Introducing endogenous screening thresholds fundamentally shifts these dynamics, as shown by comparing the ``True markdown" to the ``Conventional markdown" points among the ``Screening" bars in Figure \ref{fig:markdowns}. Firms maximize profits by simultaneously choosing wages and skill cutoffs, allowing them to economize on wage costs for their lowest-productivity workers by excluding them from the choice set. In our simulation, the low-productivity firm screens out the bottom two-thirds of the skill distribution, while the high-productivity firm sets a more lenient cutoff. With the ability to reject low-skill applicants, the high-productivity firm now achieves a positive elasticity of skill ($\varepsilon_j^Q > 0$). By raising the wage and rejecting the lower-skill tail of applicants, it optimizes its skill composition, leading to a markdown 6pp lower than the conventional measure. This equilibrium also produces significant within-firm markdown dispersion, as the firm extracts rents from the average worker but pays the marginal hire---the least-skilled worker accepted---exactly their marginal revenue product. 
+
+
+\subsection{Simulation Study: Estimation and Bias}
+
+The simulation highlights a systematic downward bias in conventional pass-through estimators, which are commonly used to identify markdowns in the literature (Card, Cardoso, Heining \& Kline 2018; Lamadon, Mogstad \& Setzler 2022; Chan, Kroft, Mattana \& Mourifie 2025). Such estimators calculate labor market power by observing how employment and wages respond to productivity shocks, summarized by an estimate $\hat{\varepsilon}_j^L$ of the wage elasticity of labor supply.\footnote{The markdown implied by the pass-through estimator is $1/(1+\hat{\varepsilon}_j^L)$, where the estimate of the labor supply elasticity, $\hat\varepsilon$, is obtained using productivity shocks as instruments.} In a world with screening, a firm receiving a positive productivity shock responds on two margins: it raises the wage to attract applicants and simultaneously lowers its screening threshold to accept a larger share of the pool. Because the pass-through estimator attributes the total increase in employment solely to the wage hike, it conflates the relaxation of the screening threshold with a high labor supply elasticity. 
+
+This conflation results in an underestimation of markdowns by 3-4pp, as can be seen by comparing the ``True markdown" to the ``Markdown implied by pass-through estimator" points among the ``Screening" bars in Figure \ref{fig:markdowns}. While the pass-through estimator is unbiased for the labor supply elasticity ($\varepsilon_j^L$) in the absence of screening, it remains a biased measure of labor market power because it fails to account for the elasticity of skill ($\varepsilon_j^Q$) inherent in the true markdown formula. By incorporating the endogenous screening response and utilizing measures of worker skill, our structural estimation procedure correctly identifies both the labor supply and skill composition elasticities. This provides a robust measure of employer market power that accounts for the screening role of the firm and the simultaneous optimization of workforce size and quality.  
+
+
+
+
+
+\section{Reallocation Effects of the Minimum Wage in Norway}
+
+In the second empirical application, we analyze the impacts of minimum wage changes in Norway through the lens of worker-specific choice sets and endogenous firm screening. %We utilize administrative data to measure shifts in skill composition and estimate establishment-level cutoffs, testing whether constrained firms raise hiring standards in response to productivity levels and local market competitiveness. By tracing worker movements across the firm productivity distribution and applying our structural model, we decompose observed outcomes into direct wage floor impacts and indirect screening responses. This framework allows for the simulation of counterfactual policies to determine how labor market thickness and screening flexibility dictate the ultimate efficiency and distributional consequences of minimum wage interventions.
+
+
+%First, we will provide the first direct evidence on how minimum wages affect firm screening behavior by measuring changes in the skill composition of newly hired workers and estimating establishment-level skill cutoffs before and after extensions, testing whether constrained firms raise their hiring standards and whether this varies with firm productivity and the degree of local competitiveness in the labor market. Second, we will trace out the complete reallocation of workers across the firm productivity distribution, documenting whether high-skill workers displaced from low-productivity firms move to higher-productivity employers or exit the market, and quantifying the resulting changes in allocative efficiency. Third, we will estimate our full structural model to decompose the total effects into channels operating through the direct wage floor versus indirect effects operating through endogenous screening responses, allowing us to quantify how much of the observed employment and wage distribution changes result from firms strategically adjusting whom they hire rather than simply how many workers they hire. This structural approach will allow us to simulate counterfactual minimum wage policies and predict their effects in other markets, providing policy-relevant guidance on how the efficiency costs and distributional benefits of minimum wages depend critically on the thickness of labor markets and the flexibility of firm screening decisions.
+
+ 
+
+\subsection{Norwegian Data and Institutional Context}
+
+We exploit quasi-experimental variation from the Norwegian government's extension of collective bargaining agreement (CBA) provisions to uncovered establishments between 2004 and 2018. These extensions generate exogenous, industry-specific minimum wage shocks for firms not originally involved in negotiations, creating substantial variation across temporal, geographic, and occupational dimensions. Bhuller, Segiet \& Vestad (2025) establish that these extensions raise average wages by approximately eight percent for constrained firms.
+
+Our analysis links minimum wage shocks to comprehensive employer-employee earnings records and firm-level financial information on revenues, costs, value added, and employment in Norway. Individual records are de-identified.  Through our coauthor Manudeep Bhuller, we have already secured access to these records. 
+
+% We leverage quasi-experimental variation in coverage by minimum wage policies in Norway, as developed in a recent working paper by Bhuller, Segiet, and Vestad (2025). Norway lacks a universal statutory minimum wage, but the government can extend the wage floor provisions of collective bargaining agreements (CBA) to all establishments within specified industries, occupations, and geographic areas. This means that firms that were not involved in the collective bargaining process can nonetheless become subject to the bargained wage at a later date due to proximity to those that were. These CBA extensions effectively generate exogenous variation in industry-specific minimum wages for previously uncovered firms at various points in time between 2004 and 2018. 
+
+% The employer-employee records  track workers across jobs over time, including hourly wages, demographics, and occupation codes.  The data also include firm financial information on revenues, costs, value added, and employment that allow us to estimate establishment-level productivity, and the ability to track workers across establishments over time. The records of CBA coverage include 60,000 occupation-specific statutory wage rates digitized from approximately 150 CBA.
+
+% The data is provided by Statistics Norway through their existing partnership with Manudeep Bhuller. Bhuller will serve as a coauthor on this component of our project, responsible for ensuring continued data access; we have already accessed these data. Bhuller, et al. (2025) find that these minimum wage extensions create substantial variation along temporal, geographic, and industry-occupation dimensions. They estimate treatment effects that raise wages by approximately eight percent for constrained establishments where pre-extension wages were at or below the new floor. However, they do not analyze how these minimum wage extensions impact the reallocation of workers across firms or changes in the allocation of worker skill levels across firms, which are central to our analysis plan.
+
+
+\subsection{Optimal Screening in Response to a Minimum Wage Increase}
+
+We now characterize theoretically the impact of marginally increasing a binding minimum wage, $\underline{w}$, on firm behavior by examining the optimal adjustments in screening cutoffs, average skill, employment size, and revenue per worker. We first show that a marginal hike in the minimum wage increases the screening threshold for a firm facing a binding minimum wage by totally differentiating the screening first-order condition:
+
+\vspace{-0.4cm}
+\[ d \underline{w}   = \overbrace{\frac{\partial}{\partial \underline{w}}\left( \frac{\partial R_j}{\partial H_j}\bar{q}_j\right)d\underline{w}}^{\text{MRPL decrease from increased labor supply}} + \overbrace{\frac{\partial}{\partial\bar{q}_j}\left( \frac{\partial R_j}{\partial H_j}\bar{q}_j \right)d\bar{q}_j}^{\text{MRPL increase due to aggressive screening}}
+\implies \quad
+\frac{d\bar{q}_j}{d\underline{w}}  ~>~ 0. \] 
+The increase in labor supply due to the higher wage decreases the MRPL of every worker at the initial screening threshold. To restore the screening FOC, the firm selects a more-skilled marginal hire. This more-selective hiring results in skill-upgrading:
+
+$$ \frac{d\ln Q_j}{d\ln\underline{w}} = \underbrace{\varepsilon_j^Q}_{>0} + \underbrace{\frac{\partial \ln Q_j}{\partial \ln \bar{q}_j}}_{>0} \underbrace{\frac{d\ln \bar{q}_j}{d\ln\underline{w}}}_{>0} ~>~ 0. $$
+
+\vspace{-0.15cm}
+\noindent
+We see that skill-upgrading consists of both direct and indirect channels. While the direct skill response to wages, $\varepsilon_j^Q$, is present in existing models (e.g. Kline 2025), our framework demonstrates that this upgrading is amplified by the firm’s strategic screening. 
+
+The net impact on employment size $L_j$ is theoretically ambiguous, as the positive supply-side response to higher wages is balanced against this more restrictive screening threshold, a result that differs from the standard model without skill heterogeneity and screening: 
+$$ \frac{d\ln L_j}{d\ln\underline{w}} = \underbrace{\varepsilon_j^L}_{>0} + \underbrace{\frac{\partial \ln L_j}{\partial \ln \bar{q}_j}}_{<0} \underbrace{\frac{d\ln \bar{q}_j}{d\ln w_j}}_{>0} ~\lesseqgtr~ 0. $$
+
+\vspace{-0.15cm}
+\noindent
+We see that, while the minimum wage hike causes the firm to move along the labor supply curve as in a standard monopsony model, stricter screening inwardly shifts that labor supply curve. 
+
+These two predictions, which are testable, highlight important differences between our and the standard model used to analyze minimum wage increases. There are also other testable predictions that differ. For instance, the predicted response of revenue-per-worker to a minimum wage hike is also ambiguous (unlike in the standard model) because the net effect depends on whether the productivity gains from a more-skilled workforce outweigh the scale effects of employment changes. In the next subsection, we focus on testing one of these predictions---the skill-upgrading effect---and will explore these other implications during the grant period.
+
+%Finally, our model highlights that the response of revenue per worker, $R_j/L_j$, depends on whether the productivity gains from a more elite workforce outweigh the scale effects of employment changes. Under diminishing returns to scale (DRS), even if employment size increases, the endogenous upgrade in average skill provides a mechanism for productivity growth:
+%$$ \frac{d\ln(R_j/L_j)}{d\ln \underline{w}} = \underbrace{\frac{\partial\ln R_j}{\partial\ln H_j }}_{>0} \underbrace{\frac{d\ln Q_j}{d\ln \underline{w}}}_{>0} + \underbrace{\left(\frac{\partial\ln R_j}{\partial\ln H_j}- 1\right)}_{<0,~\text{DRS}} \underbrace{\frac{d\ln L_j}{d\ln \underline{w}}}_{\lesseqgtr 0}  ~\lesseqgtr~ 0.$$
+
+% \subsection{Optimal Screening in Response to a Minimum Wage Increase}
+
+% We extend our model by introducing a minimum wage constraint, such that firms maximize profits subject to the constraint that $w_j \geq \underline{w}$. We will define the effects of a minimum wage hike on four key variables: cutoffs $\bar{q}_j$, average skill $Q_j$, employment size $L_j$, and revenue per employee $R_j/L_j$.
+
+% Textbook minimum wage models predict that firms will operate along their labor demand curve for sufficiently high minimum wages, rather than along their supply curve, thus creating a queue of willing labor. In our model, we  can interpret firms as screening from this queue by raising their cutoffs. (OR: In our model, no such queue will exist since firms can always screen from excess willing labor by increasing their cutoffs.)\footnote{See e.g. Kline (2025) for a model where firms screen from their queue by selecting a uniform, random subset.} Formally, we notice that the firm must adjust the cutoff such that the marginal revenue of the marginal skill type worker increases at the same rate as the wage hikes due to the binding policy constraint, in line with the cutoff FOC. Holding other firms' behavior fixed and assuming a binding ($w_j = \underline{w}$ before the minimum wage hike), firm-specific minimum wage constraint, we obtain for a marginal minimum wage hike $d\log\underline{w} $, the firm's cutoff must increase by $d\log\bar{q}_j$ given by:
+% $$
+%     d\log\underline{w} = \underbrace{\frac{\partial}{\partial \underline{w}}\left(  \frac{\partial R_j}{\partial H_j}\bar{q}_j\right)}_{<0}d\log\underline{w} + \underbrace{\frac{\partial}{\partial\bar{q}_j}\left(
+% \frac{\partial R_j}{\partial H_j}\bar{q}_j
+%     \right)}_{>0}d\log\bar{q}_j~\implies~\frac{d\log\bar{q}_j}{d\log\underline{w}} =   \frac{1- \frac{\partial \log \left( \frac{\partial R_j}{\partial H_j}\right)}{\partial\log \underline{w}}}{1+\frac{\partial\log\left(
+% \frac{\partial R_j}{\partial H_j}
+% \right)}{\partial\log\bar{q}_j}}~.
+%     $$
+% The left hand side of the first equation represents the marginal increase in the wage paid to the marginal worker, and the right hand side represents the marginal increase in this worker's marginal revenue. The right hand side can be decomposed into two effects, the direct effect of a minimum wage hike on marginal revenues and the effect of the firm's screening response on marginal revenues. The second equation illustrates that the firm's cutoff is indeed increasing in the firm-specific minimum wage. Moreover, to first order, the second equation demonstrates that $\bar{q}_j$ increases faster that $\underline{w}$ whenever the magnitude of the marginal revenue response to cutoff hikes exceeds that due to wage hikes.
+% % where the minimum wage is given by $\underline{w}$:
+% % $$
+% % \max_{w_j, \bar{q}_j} \quad \Pi_j(\mathbf{w}, \mathbf{\bar{q}}) \quad \text{s.t.}\quad  w_j\geq \underline{w}~.
+% % $$
+% % Again, our model differs from that of CITE Kline 2025 and CITE Mas 2025 in that firms screen not only using wages, but using the cutoffs $\bar{q}_j$ as well. Our model generates two predictions, which are both consequences of the firm's screening response to a minimum wage hike.
+
+% As a corollary to the result above, we obtain that average skill $Q_j$ is increasing in the firm-specific minimum wage. To see this, notice that for a binding minimum wage constraint, average skill increases directly due to the wage effect, and indirectly because of the more aggressive screening by the firm. In particular:
+% $$
+% \frac{d\log Q_j}{d\log\underline{w}} = \underbrace{\varepsilon_j^Q}_{>0} + \underbrace{\frac{\partial \log Q_j}{\partial \log\bar{q}_j}}_{>0}\underbrace{\frac{ d\log\bar{q}_j}{d\log\underline{w}}}_{>0}~.
+% $$
+% Notably, since average skill is increasing in the cutoff, meaning that the firm's cutoff response implies average skill is increasing in the firm-specific minimum wage, whenever $\varepsilon_j^Q>0$.\footnote{To see that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} > 0$, recall that our derivation of the cutoff FOC gave $\frac{\partial H_j}{\partial \bar{q}_j} = \bar{q}_j \frac{\partial L_j}{\partial \bar{q}_j}$, which in turn implies that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} = \frac{\partial \log(H_j)}{\partial \log(\bar{q}_j)} - \frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)} = \left( \frac{\bar{q}_j - Q_j}{Q_j}\right)\frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)}> 0$.} That average skill is endogenously increasing in response to a minimum wage hike is a novel prediction of our model.  
+
+% The employment size passthrough can be decomposed into a direct wage effect and indirect screening effect:
+% $$
+% \frac{d\log L_j}{d\log\underline{w}} = \underbrace{\varepsilon_j^L}_{>0} + \underbrace{\frac{\partial \log L_j}{\partial \log \bar{q}_j}}_{<0}\underbrace{\frac{ d\log \bar{q}_j}{d\log w_j}}_{>0}~.
+% $$
+% Because employment size is decreasing in the cutoff, we cannot sign the above object. Intuitively, the employment size elasticity $\varepsilon_j^L$ reflects the firm moving along the labor supply curve, whereas the second term on the right hand side of the above equation captures the inward shift in the labor supply curve due to the firm's endogenous screening response to a minimum wage hike. The relative magnitude of these two forces determine the sign of the employment size passthrough. While this ambiguity is a feature of the model in e.g. Kline (2025), this intuition is novel. As a consequence of this ambiguity, it is easy to see that the sign of the per-worker revenue response to a minimum wage hike is uncertain, since we can write:
+% $$
+% \frac{d\log(R_j/L_j)}{d\log \underline{w}} = \underbrace{\frac{\partial\log R_j}{\partial\log H_j }}_{>0}\underbrace{\frac{d\log Q_j}{d\log \underline{w}}}_{>0} + \underbrace{\left(\frac{\partial\log R_j}{\partial\log H_j}- 1\right)}_{<0,~\text{DRS}}\underbrace{\frac{d\log L_j}{d\log \underline{w}}}_{\lesseqgtr 0}~.
+% $$
+% This expression provides that, whenever employment size is decreasing in the minimum wage, revenue per worker is increasing. When employment size is instead increasing, the skill upgrade captured by the first term on the right hand side allows for a broader range of minimum wages where revenues per worker are increasing.\footnote{This range is broader than that predicted by Mas (2025), since the skill upgrade captures firms' endogenous screening responses.}
+
+
+% \paragraph{Result: Firms screen more aggressively in response to a firm-specific minimum wage hike.} Textbook minimum wage models predict that firms will operate along their labor demand curve for sufficiently high minimum wages, rather than along their supply curve. In contrast, our model obtains that firms will always operate along the labor supply curve, since they can increase the cutoff to face an inwardly-shifted labor supply curve. To formally demonstrate this, we notice that the firm must adjust the cutoff such that the marginal increase in the marginal revenue of the marginal skill type worker equals the marginal increase in the wage due to the policy constraint, in line with the cutoff FOC. When the policy constraint binds, the wage paid to the marginal worker increases by $dw_j$. The change in the marginal revenue of marginal worker of skill $\bar{q}_j$ can be decomposed into the change due to a binding minimum wage constraint, which is given by $\frac{\partial}{\partial w_j}\left( \bar{q}_j \frac{\partial R_j}{\partial H_j}\right)dw_j$, and the change due to the firm's screening response, which is given by $\frac{\partial}{\partial\bar{q}_j}\left(
+% \frac{\partial R_j}{\partial H_j}\bar{q}_j
+%     \right)d\bar{q}_j$. Putting these expressions together yields:
+%     $$
+%     dw_j = \frac{\partial}{\partial w_j}\left( \bar{q}_j \frac{\partial R_j}{\partial H_j}\right)dw_j + \frac{\partial}{\partial\bar{q}_j}\left(
+% \frac{\partial R_j}{\partial H_j}\bar{q}_j
+%     \right)d\bar{q}_j~.
+%     $$
+%     A marginal increase in wages increases total effective labor $H_j$ and thus, for $F$ with decreasing returns to scale, decreases the marginal revenue of the marginal worker of skill $\bar{q}_j$. Increasing the cutoff increases this marginal revenue. Therefore, the firm must raise its cutoff in response to a minimum wage hike in order to counteract both the increase in wages paid and the decrease in the marginal revenue due to a larger set of willing labor at each skill level. Intuitively, this result states that, instead of there existing a queue of willing labor as in a textbook minimum wage model, firms will screen more aggressively until no queue of willing labor exists. In this sense, firms always operate along the labor supply curve. Importantly, we recover as a corollary to this prediction the result of CITE Kline (2025), who finds that the response of employment size to a minimum wage hike is uncertain in the labor monopsonist's problem, since the decrease in employment size due to screening can exceed the corresponding increase due to the higher wage posted by the firm.\footnote{In particular, one can obtain $\frac{d\log (L_j)}{d\log(\underline{w})} = \varepsilon_j^L + \frac{\partial\log( L_j)}{\partial \log(\bar{q}_j)}\frac{d\log(\bar{q}_j)}{d\log(\underline{w})}~,$ which decomposes the employment size response of firm $j$ to a minimum wage hike into wage and screening effects.} To test this prediction, we obtain the passthrough of minimum wages onto the first centile of a proxy for skill. 
+
+% \paragraph{Prediction 2: Average skill increases with a firm-specific minimum wage hike.} As a corollary to our first prediction, we obtain that average skill $Q_j$ is increasing in the firm-specific minimum wage, holding all other firms' wages and cutoffs fixed, whenever the elasticity of average skill with respect to wage $\varepsilon_j^Q$ is positive. To see this, notice that for a binding minimum wage constraint, average skill increases directly due to the wage effect, and indirectly because of the more aggressive screening by the firm documented by the first prediction.\footnote{To see that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} > 0$, recall that our derivation of the cutoff FOC gave $\frac{\partial H_j}{\partial \bar{q}_j} = \bar{q}_j \frac{\partial L_j}{\partial \bar{q}_j}$, which in turn implies that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} = \frac{\partial \log(H_j)}{\partial \log(\bar{q}_j)} - \frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)} = \left( \frac{\bar{q}_j - Q_j}{Q_j}\right)\frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)}> 0$.} Formally, we can obtain the following average skill response to a binding, firm-specific minimum wage hike:
+% $$
+% \frac{d\log(Q_j)}{d\log(w_j)} = \varepsilon_j^Q + \frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)}\frac{ d\log(\bar{q}_j)}{d\log(w_j)}~,
+% $$
+% where the first term captures the direct wage effect, and the second term captures the indirect screening effect. Crucially, textbook minimum wage models do not track the composition of worker skill in response to minimum wage hikes. While the model of Mas (2025) would also predict an increase in average skill with respect to a minimum wage hike, screening occurs via wages alone in the Mas (2025) model, meaning that this prediction is a purely mechanical consequence of $\varepsilon_j^Q$ being positive. In contrast, cutoff-setting remains endogenous in our model, and the average skill response to the minimum wage reflects this endogeneity via the indirect channel described above. To test this prediction, we obtain the minimum wage passthrough onto a proxy for average skill.
+
+% in contrast to the model of Mas (2025), our model predicts reallocation 
+
+% We extend our canonical model by introducing a minimum wage constraint, where the minimum wage is given by $\underline{w}$:
+% $$
+% \max_{w_j, \bar{q}_j} \quad \Pi_j(\mathbf{w}, \mathbf{\bar{q}}) \quad \text{s.t.}\quad  w_j\geq \underline{w}~.
+% $$
+% Our model differs from existing models of minimum wages and labor market monopsony (CITE Kline 2025), in that as opposed to choosing an optimal employment level, firms will choose a screening cutoff that jointly determines the employment level and the average skill of workers employed by the firm. As a result, our model generates three novel predictions holding. First, in response to a marginally-binding firm-specific minimum wage constraint, firms will increase their cutoffs holding all other firms' wages and cutoffs fixed. Second, the employment response to a marginal firm-specific minimum wage hike is non-monotone. Higher wages make the firm more desirable though simultaneously more selective, generating the above non-monotonicity. Finally, our model predicts that whenever the wage elasticity of skill is positive, average skill will be increasing in the firm-specific marginally-binding minimum wage constraint. These three predictions suggest that minimum wage hikes shrink workers' choice sets, while firms screen more aggressively to offset the direct effect of a minimum wage hike on employment size.
+
+% In our model, a binding (firm-specific) minimum wage hike leads the monopsonist to screen more aggressively,\footnote{To see this, notice that whenever $F$ is concave, $\frac{\partial R_j}{\partial H_j}$ will be increasing in $w_j$. In general, we obtain $\frac{d\log(\bar{q}_j)}{d\log(w_j)} = \frac{1-\varepsilon_{j,w}^{MRTS}}{1+\varepsilon_{j,\bar{q}}^{MRTS}}$, where $\varepsilon_{j,w}^{MRTS}$ and $\varepsilon_{j,\bar{q}}^{MRTS}$ are the elasticities of the marginal revenue of total skill with respect to the wage and cutoff, respectively.} yielding employment losses that oppose the increase in employment size induced by the monopsonist's price-taking under a binding minimum wage constraint. In particular, holding all other firms' wages $\boldsymbol{w}_{-j}$ and cutoffs $\boldsymbol{q}_{-j}$ fixed, we obtain that for a binding minimum wage constraint on firm $j$:
+% $$
+% \frac{d\log (L_j)}{d\log(\underline{w})} = \varepsilon_j^L + \frac{\partial\log( L_j)}{\partial \log(\bar{q}_j)}\frac{d\log(\bar{q}_j)}{d\log(\underline{w})}~.
+% $$
+% The above equation demonstrates that, in our model, we can decompose the effect of a minimum wage hike on employment into two components: $\varepsilon_j^L$ representing the increase in employment due to induced price-taking behavior, and a second response representing a decrease in employment due to an aggressive screening response to the minimum wage hike. 
+
+% We consider the change in average skill due to an increase in the minimum wage. It turns out that, so long as the skill elasticity is positive, average skill will be increasing in the minimum wage. To see this, notice that we may obtain, again holding all other firms' wages $\boldsymbol{w}_{-j}$ and cutoffs $\boldsymbol{q}_{-j}$ fixed, the following elasticity:
+% $$
+% \frac{d\log(Q_j)}{d\log(\underline{w})} = \varepsilon_j^Q + \frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)}\frac{ d\log(\bar{q}_j)}{d\log(\underline{w})}~.
+% $$
+% Whenever the average skill supply elasticity with respect to wage $\varepsilon_j^Q$ is positive, the average skill at firm $j$ will be increasing in response to a minimum wage hike, since average skill $Q_j$ increases as the firm screens more aggressively.\footnote{To see that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} > 0$, recall that our derivation of the cutoff FOC gave $\frac{\partial H_j}{\partial \bar{q}_j} = \bar{q}_j \frac{\partial L_j}{\partial \bar{q}_j}$, which in turn implies that $\frac{\partial \log(Q_j)}{\partial \log(\bar{q}_j)} = \frac{\partial \log(H_j)}{\partial \log(\bar{q}_j)} - \frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)} = \left( \frac{\bar{q}_j - Q_j}{Q_j}\right)\frac{\partial \log(L_j)}{\partial \log(\bar{q}_j)}> 0$.}
+
+\subsection{Preliminary Evidence on Skill-upgrading after Minimum Wage Hikes}
+ 
+To provide preliminary evidence that Norwegian employers screen more aggressively in response to a  minimum wage increase, we now apply the event study design of Bhuller, Segiet \& Vestad (2025) to our outcome of interest. In particular, we examine how the skill of new hires changes in response to a minimum wage increase triggered by a CBA extension. To proxy for worker-specific skill, we consider two observable outcomes: the proportion of employees in the firm with a high school degree, and the log earnings that new hires were paid in their previous job. 
+
+The results are presented in Figure \ref{fig:norway_screening}. First, we find that the quality of new hires does not show evidence of pre-trends in anticipation of the minimum wage hike for either proxy. Second, we find that the proportion of employees with a high school degree increases by up to 3pp, which is a statistically-significant effect. Third, we find a gradual increase in the past earnings of new hires after the minimum wage hike. This proxy increases by about 10\%, which is stable across post-event time periods three through five and marginally statistically-significant. This is a massive increase in past earnings of new hires. By comparison, Kline, Petkova, Williams \& Zidar (2019) find that the past earnings of new hires slightly decrease in response to the approval of a valuable patent, while Kroft, Luo, Mogstad \& Setzler (2025) find only a statistically-insignificant 1\% increase in past earnings of new hires in response to winning a procurement contract. We will analyze several other skill proxies for evidence of upgrading during the grant period.
+
+
+\begin{figure}[t]
+
+\centering
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{event_studies_hs_prop.png}
+    \caption{Proportion of Workers with High School Degree}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{total_wages_event_study.png}
+    \caption{Past Log Earnings of New Hires}
+\end{subfigure}
+
+\caption{Evidence on Skill-upgrading from Event Studies in Norway}
+\label{fig:norway_screening}
+
+\end{figure}
+
+
+
+
+
+\section{Extensions}
+
+The flexibility of the new framework opens several promising avenues for future research. One extension incorporates endogenous amenities as an additional mechanism. Firms could selectively provide non-wage characteristics of the job (amenities) in order to attract particular skill groups, especially if those skill groups have differential values across amenities. For this purpose, we have obtained from Statistics Norway a large dataset on the amenities that employers advertise in job postings in Norway, linked to the employer-employee administrative data. See Audoly, Bhuller \& Reiremo (2024) for a detailed description of the job ads database, to which we already have access via our partnership with Manudeep Bhuller. 
+
+A second set of extensions adds greater flexibility to the equilibrium model of screening. One extension models spillovers across skill levels and occupations. To do so, we generalize the revenue production function so that occupations and skills can either complement or substitute for one another in production. In this case, firms would simultaneously set many different cutoffs for various occupations, which are linked through the firm's production function. Another extension introduces noise to the screening process, such that some marginally-unqualified workers may appear qualified. In such a context, marginal workers have incentives to apply to multiple jobs simultaneously, and firms have incentives to hire fewer than all applicants. 
+
+%A final key extension is to use the framework to analyze how worker training influences wages. In simple models in which the wage is proportional to the MRPL, the distribution of worker skill has no impact on the equilibrium wage, a result that is overturned in our model where endogenous screening creates returns to skill.
+
+\section{Intellectual Merit and Broader Impacts}
+\noindent{\textbf{Intellectual Merit:}} \\ The project's intellectual merit rests on its innovative synthesis of two previously separate fields: the empirical literature on labor market power (monopsony) and the applied literature on two-sided matching markets. By introducing the concept of endogenous screening into general equilibrium models of imperfect competition in the labor market, we provide a unified and comprehensive framework for analyzing wage and employment determination. This approach allows us to correct for significant biases in firm market power and productivity estimation that arise from ignoring the worker's true, limited choice set. Our use of linked employer-employee administrative data, combined with cutting-edge econometric techniques from industrial organization (demand estimation) and labor economics (identification exploiting micro- and market-level variation), positions this work at the frontier of empirical research. \\
+\noindent{\textbf{Broader Impacts:}} \\ The project design has broad impacts across multiple dimensions. First, the research will produce a new analytical tool for rigorously evaluating minimum wage policies, which are among the most important and debated policy interventions for improving societal well-being and reducing inequality. Second, the project will contribute significantly to STEM education and workforce development by training graduate students and the future workforce in methods from labor economics and industrial organization, preparing them for high-level analytical careers. Third, we are committed to actively disseminating our findings to policymakers in Washington, D.C., to increase public scientific engagement and inform evidence-based policies that are aimed at enhancing the economic competitiveness and efficiency of the United States labor market.
+
+
+
+
+
+
+\section{Results from Previous NSF Support}
+\subsection{PI: Nikhil Agarwal}
+
+Agarwal's most relevant NSF award is:
+\begin{enumerate}
+    %\item SES-1427231, 08/2014 - 09/2017, Amount \$289,328, titled ``Demand Analysis for Matching Markets," which supported Abdulkadiroglu et.al. (2017), and Agarwal and Somaini (2018), published respectively in \emph{American Economic Review} and \emph{Econometrica} along with replication code.
+    %\item SES-1729090, 08/2017 – 08/2020; Amount: \$273,181, titled ``Empirical Analysis of Resource Allocation Problems," which supported Agarwal et.al. (2017) and Agarwal et.al. (2021), published respectively in \emph{American Economic Review} and \emph{Econometrica} along with replication code. The grant also supported other papers that appeared in \emph{AEA: Papers and Proceedings}.
+    \item SES-1948714, 03/01/2020 – 03/01/2024; Amount: \$785,689, titled ``Outcomes and the Value of Choice in Assignment Problems," which supported Agarwal et.al. (2025), published in \emph{Econometrica} along with replication code. The grant also supported other work currently in progress.
+\end{enumerate} 
+\noindent\textbf{Intellectual Merit:} This grant has funded a
+longstanding research agenda on the empirical analysis of matching
+markets. The resulting paper identifies inefficiencies in matching markets and proposing remedies. The current proposal is related to this prior work in both these dimensions.
+
+\noindent\textbf{Broader Impacts: }Research supported by this grant
+has had specific policy impacts. Most significantly, the research
+on kidney exchange markets identified problems with the current exchange
+mechanisms and proposed solutions that have been adopted by the
+second largest kidney exchange platform, the Alliance for Paired Donation. The results have also motivated a review of the simulation methods used to analyze organ allocation
+processes.
+
+Funds from the grant have been used to support several undergraduate, graduate, and predoctoral research assistants and to train them in conducting
+related research. Several PhD students supported by the grant have
+gone on to develop research agendas in related areas. Through a combination
+of these activities, research supported by this grant has been instrumental
+in developing an empirical approach to matching market design.
+
+
+
+\subsection{PI: Bradley Setzler}
+
+Setzler has obtained one prior NSF Award:
+\begin{enumerate}  
+\item SES-1851808, 09/2019 - 08/2022, Amount \$180,000, titled ``Impacts of Firms, Labor Markets, and Government Policy on Income Volatility and Inequality in the U.S.: Evidence from IRS Tax Data," which supported Lamadon et. al. (2022), Bonhomme et al. (2023), and Kroft et al. (2025), published respectively in the \emph{American Economic Review}, \emph{Journal of Labor Economics}, and \emph{American Economic Review} along with replication code.
+\end{enumerate}
+
+\noindent\textbf{Intellectual Merit:} This grant supported three years of postdoctoral study at the University of Chicago for PI Setzler. The three resulting publications, each in a top-tier peer-reviewed journal and receiving more than 100 citations, have been impactful in the literature on labor market power and employers' role in wage inequality. 
+
+\noindent\textbf{Broader Impacts:} This project addressed policy questions regarding how government interventions affect inequality, estimating effects of tax progressivity, and public procurement spending on worker wages versus firm profits. A summary of policy-relevant results from this project was released in a white paper through the IRS Statistics of Income division.  To assist future researchers, the PI publicly released statistical extracts characterizing employer-employee matching and shock transmission in the US and four European countries, as well as a software package implementing cutting-edge econometric methods for estimating firm and worker contributions to wage inequality. Within academic circles, the research funded by this grant was presented in more than 50 conferences and seminars.
+
+\end{document}

@@ -63,6 +63,23 @@ class EquilibriumData:
     beta: float
     gamma: float
     N_workers: float = 1.0
+    mu_x_skill: Optional[float] = None
+    sigma_x_skill: Optional[float] = None
+    mu_a_skill: Optional[float] = None
+    sigma_a_skill: Optional[float] = None
+    worker_mu_x: Optional[float] = None
+    worker_mu_y: Optional[float] = None
+    worker_sigma_x: Optional[float] = None
+    worker_sigma_y: Optional[float] = None
+    worker_rho: Optional[float] = None
+    rho_x_skill_ell_x: float = 0.0
+    rho_x_skill_ell_y: float = 0.0
+    rho_x_skill_r: float = 0.0
+    worker_loc_mode: Optional[str] = None
+    worker_r_mu: Optional[float] = None
+    worker_r_sigma: Optional[float] = None
+    mu_s_loc: Optional[np.ndarray] = None
+    sigma_s_loc: Optional[np.ndarray] = None
 
 
 # =============================================================================
@@ -73,6 +90,174 @@ class EquilibriumData:
 def _safe_log(x: Any, eps: float, xp: Any) -> Any:
     """Numerically safe log usable with numpy or jax.numpy."""
     return xp.log(xp.maximum(x, eps))
+
+
+def _get_skill_moments(data: EquilibriumData) -> Tuple[Any, Any]:
+    if data.mu_s_loc is not None and data.sigma_s_loc is not None:
+        return data.mu_s_loc, data.sigma_s_loc
+    return data.mu_s, data.sigma_s
+
+
+def _compute_location_skill_moments(
+    support_points: np.ndarray,
+    support_weights: Optional[np.ndarray],
+    params: Dict[str, Any],
+    eps: float = 1e-12,
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    rho_x_skill_ell_x = float(params.get("rho_x_skill_ell_x", 0.0))
+    rho_x_skill_ell_y = float(params.get("rho_x_skill_ell_y", 0.0))
+    rho_x_skill_r = float(params.get("rho_x_skill_r", 0.0))
+    worker_loc_mode = params.get("worker_loc_mode", "cartesian")
+
+    if abs(rho_x_skill_r) > 0.0:
+        if abs(rho_x_skill_ell_x) > 0.0 or abs(rho_x_skill_ell_y) > 0.0:
+            raise ValueError("Set either rho_x_skill_r or rho_x_skill_ell_x/ell_y, not both.")
+        if not (-1.0 <= rho_x_skill_r <= 1.0):
+            raise ValueError("rho_x_skill_r must be in [-1, 1].")
+
+        mu_x_skill = params.get("mu_x_skill")
+        sigma_x_skill = params.get("sigma_x_skill")
+        mu_a_skill = params.get("mu_a_skill", 0.0)
+        sigma_a_skill = params.get("sigma_a_skill", 0.0)
+        worker_mu_x = params.get("worker_mu_x")
+        worker_mu_y = params.get("worker_mu_y")
+
+        missing = [
+            name
+            for name, value in {
+                "mu_x_skill": mu_x_skill,
+                "sigma_x_skill": sigma_x_skill,
+                "worker_mu_x": worker_mu_x,
+                "worker_mu_y": worker_mu_y,
+            }.items()
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                "Skill-radius correlation requested but missing parameters: "
+                + ", ".join(missing)
+            )
+
+        mu_x_skill = float(mu_x_skill)
+        sigma_x_skill = float(sigma_x_skill)
+        mu_a_skill = float(mu_a_skill)
+        sigma_a_skill = float(sigma_a_skill)
+        worker_mu_x = float(worker_mu_x)
+        worker_mu_y = float(worker_mu_y)
+
+        if sigma_x_skill <= 0:
+            raise ValueError("sigma_x_skill must be positive for skill-radius correlation.")
+
+        r_vals = np.sqrt(
+            (support_points[:, 0] - worker_mu_x) ** 2
+            + (support_points[:, 1] - worker_mu_y) ** 2
+        )
+        if support_weights is None:
+            weights = np.full(r_vals.shape[0], 1.0 / r_vals.shape[0])
+        else:
+            weights = np.asarray(support_weights, dtype=float)
+            weights = weights / np.maximum(weights.sum(), eps)
+        r_mean = np.sum(weights * r_vals)
+        r_var = np.sum(weights * (r_vals - r_mean) ** 2)
+        r_std = np.sqrt(np.maximum(r_var, eps))
+        if r_std <= eps:
+            raise ValueError("Worker radius has near-zero variance; cannot apply rho_x_skill_r.")
+
+        r_std_vals = (r_vals - r_mean) / r_std
+        mu_x_cond = mu_x_skill + rho_x_skill_r * sigma_x_skill * r_std_vals
+        sigma_x_cond = sigma_x_skill * np.sqrt(np.maximum(1.0 - rho_x_skill_r**2, eps))
+
+        mu_s_loc = mu_x_cond + mu_a_skill
+        sigma_s_loc = np.full_like(
+            mu_s_loc, np.sqrt(sigma_x_cond**2 + sigma_a_skill**2), dtype=float
+        )
+        return mu_s_loc, sigma_s_loc
+
+    if worker_loc_mode == "polar" and (abs(rho_x_skill_ell_x) > 0.0 or abs(rho_x_skill_ell_y) > 0.0):
+        raise ValueError("worker_loc_mode=polar does not support rho_x_skill_ell_x/ell_y; use rho_x_skill_r.")
+
+    if abs(rho_x_skill_ell_x) <= 0.0 and abs(rho_x_skill_ell_y) <= 0.0:
+        return None, None
+
+    if not (-1.0 <= rho_x_skill_ell_x <= 1.0 and -1.0 <= rho_x_skill_ell_y <= 1.0):
+        raise ValueError("rho_x_skill_ell_x and rho_x_skill_ell_y must be in [-1, 1].")
+
+    mu_x_skill = params.get("mu_x_skill")
+    sigma_x_skill = params.get("sigma_x_skill")
+    mu_a_skill = params.get("mu_a_skill", 0.0)
+    sigma_a_skill = params.get("sigma_a_skill", 0.0)
+    worker_mu_x = params.get("worker_mu_x")
+    worker_mu_y = params.get("worker_mu_y")
+    worker_sigma_x = params.get("worker_sigma_x")
+    worker_sigma_y = params.get("worker_sigma_y")
+    worker_rho = params.get("worker_rho", 0.0)
+
+    missing = [
+        name
+        for name, value in {
+            "mu_x_skill": mu_x_skill,
+            "sigma_x_skill": sigma_x_skill,
+            "worker_mu_x": worker_mu_x,
+            "worker_mu_y": worker_mu_y,
+            "worker_sigma_x": worker_sigma_x,
+            "worker_sigma_y": worker_sigma_y,
+        }.items()
+        if value is None
+    ]
+    if missing:
+        raise ValueError(
+            "Skill-location correlation requested but missing parameters: "
+            + ", ".join(missing)
+        )
+
+    mu_x_skill = float(mu_x_skill)
+    sigma_x_skill = float(sigma_x_skill)
+    mu_a_skill = float(mu_a_skill)
+    sigma_a_skill = float(sigma_a_skill)
+    worker_mu_x = float(worker_mu_x)
+    worker_mu_y = float(worker_mu_y)
+    worker_sigma_x = float(worker_sigma_x)
+    worker_sigma_y = float(worker_sigma_y)
+    worker_rho = float(worker_rho)
+
+    if worker_sigma_x <= 0 or worker_sigma_y <= 0 or sigma_x_skill <= 0:
+        raise ValueError("Worker and skill standard deviations must be positive.")
+
+    cov_xy = worker_rho * worker_sigma_x * worker_sigma_y
+    Sigma_ell = np.array(
+        [
+            [worker_sigma_x**2, cov_xy],
+            [cov_xy, worker_sigma_y**2],
+        ],
+        dtype=float,
+    )
+    det = np.linalg.det(Sigma_ell)
+    if det <= eps:
+        raise ValueError("Worker location covariance is not positive definite.")
+    Sigma_ell_inv = np.linalg.inv(Sigma_ell)
+
+    cov_x_ell = np.array(
+        [
+            rho_x_skill_ell_x * sigma_x_skill * worker_sigma_x,
+            rho_x_skill_ell_y * sigma_x_skill * worker_sigma_y,
+        ],
+        dtype=float,
+    )
+    beta = cov_x_ell @ Sigma_ell_inv
+    var_x_cond = sigma_x_skill**2 - cov_x_ell @ Sigma_ell_inv @ cov_x_ell.T
+    if var_x_cond <= eps:
+        raise ValueError(
+            "Implied conditional variance for x_skill is non-positive; "
+            "check correlation settings."
+        )
+
+    delta = support_points - np.array([worker_mu_x, worker_mu_y], dtype=float)
+    mu_x_cond = mu_x_skill + delta @ beta.T
+
+    mu_s_loc = mu_x_cond + mu_a_skill
+    sigma_s_loc = np.sqrt(np.maximum(var_x_cond + sigma_a_skill**2, eps))
+    sigma_s_loc = np.full_like(mu_s_loc, sigma_s_loc, dtype=float)
+    return mu_s_loc, sigma_s_loc
 
 
 def _truncated_normal_column_terms_backend(
@@ -150,14 +335,36 @@ def jax_aggregate_over_locations(
     xi_sorted = xi[order_idx]
     loc_sorted = loc[order_idx]
 
-    DeltaF, M_conditional = _truncated_normal_column_terms_backend(
-        c_sorted, mu_s, sigma_s, eps, jnp, jsp.special.ndtr
-    )
-    p = DeltaF
-    m_raw = DeltaF * M_conditional
-    m_sum = jnp.sum(m_raw)
-    scale = jnp.where(jnp.abs(m_sum) > 1e-12, mu_s / jnp.maximum(m_sum, eps), 0.0)
-    m = jnp.concatenate([m_raw[:1], m_raw[1:] * scale])
+    mu_s_arr = jnp.asarray(mu_s)
+    sigma_s_arr = jnp.asarray(sigma_s)
+    if mu_s_arr.ndim == 0 and sigma_s_arr.ndim == 0:
+        DeltaF, M_conditional = _truncated_normal_column_terms_backend(
+            c_sorted, mu_s_arr, sigma_s_arr, eps, jnp, jsp.special.ndtr
+        )
+        p = DeltaF
+        m_raw = DeltaF * M_conditional
+        m_sum = jnp.sum(m_raw)
+        scale = jnp.where(jnp.abs(m_sum) > 1e-12, mu_s_arr / jnp.maximum(m_sum, eps), 0.0)
+        m = jnp.concatenate([m_raw[:1], m_raw[1:] * scale])
+    else:
+        if mu_s_arr.shape[0] != support_points.shape[0] or sigma_s_arr.shape[0] != support_points.shape[0]:
+            raise ValueError(
+                "mu_s and sigma_s must match support_points when using location-dependent skills."
+            )
+
+        def _loc_terms(mu_loc: Any, sigma_loc: Any) -> Tuple[Any, Any]:
+            return _truncated_normal_column_terms_backend(
+                c_sorted, mu_loc, sigma_loc, eps, jnp, jsp.special.ndtr
+            )
+
+        DeltaF, M_conditional = jax.vmap(_loc_terms)(mu_s_arr, sigma_s_arr)
+        p = DeltaF
+        m_raw = DeltaF * M_conditional
+        m_sum = jnp.sum(m_raw, axis=1)
+        scale = jnp.where(
+            jnp.abs(m_sum) > 1e-12, mu_s_arr / jnp.maximum(m_sum, eps), 0.0
+        )
+        m = jnp.concatenate([m_raw[:, :1], m_raw[:, 1:] * scale[:, None]], axis=1)
 
     # Distances and inclusive values for all support points
     distances = jnp.linalg.norm(
@@ -168,8 +375,8 @@ def jax_aggregate_over_locations(
     v = jnp.concatenate([jnp.ones((support_points.shape[0], 1)), v_firms], axis=1)  # (S, J+1)
 
     denom = jnp.cumsum(v, axis=1)
-    q = p[None, :] / jnp.maximum(denom, eps)
-    r = m[None, :] / jnp.maximum(denom, eps)
+    q = p / jnp.maximum(denom, eps)
+    r = m / jnp.maximum(denom, eps)
     Q = jnp.flip(jnp.cumsum(jnp.flip(q, axis=1), axis=1), axis=1)
     R = jnp.flip(jnp.cumsum(jnp.flip(r, axis=1), axis=1), axis=1)
 
@@ -279,27 +486,53 @@ def _aggregate_over_locations_backend(
     xi_sorted = xi[order_idx]
     loc_sorted = loc[order_idx]
 
-    DeltaF, M_conditional = _truncated_normal_column_terms_backend(
-        c_sorted, mu_s, sigma_s, eps, xp, ndtr_fn
-    )
-    p = DeltaF
-    m_raw = DeltaF * M_conditional
-    m_sum = xp.sum(m_raw)
-    scale = xp.where(xp.abs(m_sum) > 1e-12, mu_s / xp.maximum(m_sum, eps), 0.0)
-    m = xp.concatenate([m_raw[:1], m_raw[1:] * scale])
-
     L_byc = xp.zeros(J + 1, dtype=w.dtype)
     M_byc = xp.zeros(J + 1, dtype=w.dtype)
 
-    for s in range(int(support_points.shape[0])):
-        ell = support_points[s]
-        omega = weights[s]
-        v = _inclusive_values_at_loc_backend(
-            ell, w_sorted, xi_sorted, loc_sorted, alpha, gamma, xp, eps
+    mu_s_arr = xp.asarray(mu_s)
+    sigma_s_arr = xp.asarray(sigma_s)
+    if mu_s_arr.ndim == 0 and sigma_s_arr.ndim == 0:
+        DeltaF, M_conditional = _truncated_normal_column_terms_backend(
+            c_sorted, mu_s_arr, sigma_s_arr, eps, xp, ndtr_fn
         )
-        L_loc, M_loc = _conditional_LM_at_loc_backend(v, p, m, xp, eps)
-        L_byc = L_byc + omega * L_loc
-        M_byc = M_byc + omega * M_loc
+        p = DeltaF
+        m_raw = DeltaF * M_conditional
+        m_sum = xp.sum(m_raw)
+        scale = xp.where(xp.abs(m_sum) > 1e-12, mu_s_arr / xp.maximum(m_sum, eps), 0.0)
+        m = xp.concatenate([m_raw[:1], m_raw[1:] * scale])
+        for s in range(int(support_points.shape[0])):
+            ell = support_points[s]
+            omega = weights[s]
+            v = _inclusive_values_at_loc_backend(
+                ell, w_sorted, xi_sorted, loc_sorted, alpha, gamma, xp, eps
+            )
+            L_loc, M_loc = _conditional_LM_at_loc_backend(v, p, m, xp, eps)
+            L_byc = L_byc + omega * L_loc
+            M_byc = M_byc + omega * M_loc
+    else:
+        if mu_s_arr.shape[0] != support_points.shape[0] or sigma_s_arr.shape[0] != support_points.shape[0]:
+            raise ValueError(
+                "mu_s and sigma_s must match support_points when using location-dependent skills."
+            )
+        for s in range(int(support_points.shape[0])):
+            ell = support_points[s]
+            omega = weights[s]
+            DeltaF, M_conditional = _truncated_normal_column_terms_backend(
+                c_sorted, mu_s_arr[s], sigma_s_arr[s], eps, xp, ndtr_fn
+            )
+            p = DeltaF
+            m_raw = DeltaF * M_conditional
+            m_sum = xp.sum(m_raw)
+            scale = xp.where(
+                xp.abs(m_sum) > 1e-12, mu_s_arr[s] / xp.maximum(m_sum, eps), 0.0
+            )
+            m = xp.concatenate([m_raw[:1], m_raw[1:] * scale])
+            v = _inclusive_values_at_loc_backend(
+                ell, w_sorted, xi_sorted, loc_sorted, alpha, gamma, xp, eps
+            )
+            L_loc, M_loc = _conditional_LM_at_loc_backend(v, p, m, xp, eps)
+            L_byc = L_byc + omega * L_loc
+            M_byc = M_byc + omega * M_loc
 
     S_byc = xp.where(L_byc > eps, M_byc / L_byc, xp.zeros_like(M_byc))
 
@@ -385,6 +618,7 @@ def compute_equilibrium_objects(
     w = np.exp(logw)
     c = np.exp(logc)
 
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
     agg = aggregate_over_locations(
         data.support_points,
         data.support_weights,
@@ -394,8 +628,8 @@ def compute_equilibrium_objects(
         data.loc_firms,
         data.alpha,
         data.gamma,
-        data.mu_s,
-        data.sigma_s,
+        mu_s_arg,
+        sigma_s_arg,
         eps=eps,
     )
 
@@ -444,6 +678,7 @@ def wage_elasticities_jax(
 
     logw = jnp.asarray(logw)
     logc = jnp.asarray(logc)
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
 
     def _logL_logS(lw: Any) -> Tuple[Any, Any]:
         agg = jax_aggregate_over_locations(
@@ -455,8 +690,8 @@ def wage_elasticities_jax(
             jnp.asarray(data.loc_firms),
             data.alpha,
             data.gamma,
-            data.mu_s,
-            data.sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
             eps=eps,
         )
         L_share_nat = agg["L_firms_nat"]
@@ -491,6 +726,7 @@ def cutoff_elasticities_jax(
 
     logw = jnp.asarray(logw)
     logc = jnp.asarray(logc)
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
 
     def _logL_logS(lc: Any) -> Tuple[Any, Any]:
         agg = jax_aggregate_over_locations(
@@ -502,8 +738,8 @@ def cutoff_elasticities_jax(
             jnp.asarray(data.loc_firms),
             data.alpha,
             data.gamma,
-            data.mu_s,
-            data.sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
             eps=eps,
         )
         L_share_nat = agg["L_firms_nat"]
@@ -602,6 +838,7 @@ def equilibrium_residual_jax(
     w = jnp.exp(logw)
     c = jnp.exp(logc)
 
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
     agg = jax_aggregate_over_locations(
         jnp.asarray(data.support_points),
         jnp.asarray(data.support_weights),
@@ -611,8 +848,8 @@ def equilibrium_residual_jax(
         jnp.asarray(data.loc_firms),
         data.alpha,
         data.gamma,
-        data.mu_s,
-        data.sigma_s,
+        mu_s_arg,
+        sigma_s_arg,
         eps=eps,
     )
 
@@ -670,6 +907,7 @@ def equilibrium_residual_noscreening_jax(
 
     logw = jnp.asarray(logw)
     w = jnp.exp(logw)
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
 
     if mode == "heterogeneous_acceptall":
         # Use heterogeneous skills with c = -inf (accept all workers)
@@ -685,8 +923,8 @@ def equilibrium_residual_noscreening_jax(
             jnp.asarray(data.loc_firms),
             data.alpha,
             data.gamma,
-            data.mu_s,
-            data.sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
             eps=eps,
         )
         L_share = agg["L_firms_nat"]
@@ -751,7 +989,8 @@ def compute_equilibrium_objects_noscreening(
         # Use heterogeneous skills with c = -inf (accept all workers)
         c_very_low = np.full_like(w, -1e10)
         logc_fixed = np.log(np.maximum(c_very_low, eps))
-        
+
+        mu_s_arg, sigma_s_arg = _get_skill_moments(data)
         agg = aggregate_over_locations(
             data.support_points,
             data.support_weights,
@@ -761,8 +1000,8 @@ def compute_equilibrium_objects_noscreening(
             data.loc_firms,
             data.alpha,
             data.gamma,
-            data.mu_s,
-            data.sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
             eps=eps,
         )
         L_share = agg["L_firms_nat"]
@@ -819,6 +1058,7 @@ def compute_profit_at_logs(
     """Compute firm profits given log wage/cutoff vectors, holding others fixed."""
     w = np.exp(logw)
     c = np.exp(logc)
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data)
     agg = aggregate_over_locations(
         data.support_points,
         data.support_weights,
@@ -828,8 +1068,8 @@ def compute_profit_at_logs(
         data.loc_firms,
         data.alpha,
         data.gamma,
-        data.mu_s,
-        data.sigma_s,
+        mu_s_arg,
+        sigma_s_arg,
         eps=eps,
     )
     L_share_nat = np.maximum(agg["L_firms_nat"], eps)
@@ -1188,7 +1428,7 @@ def read_parameters_csv(path: str) -> Dict[str, Any]:
                 params[name] = int(value)
             elif name in ["quad_normalize", "quad_write_csv"]:
                 params[name] = bool(value)
-            elif name == "quad_kind":
+            elif name in ["quad_kind", "worker_loc_mode"]:
                 params[name] = str(value)
             else:
                 params[name] = float(value)
@@ -1219,6 +1459,7 @@ def write_equilibrium_csv(
     S_cutoff_elasticity: Optional[np.ndarray] = None,
     L_tfp_elasticity: Optional[np.ndarray] = None,
     w_tfp_elasticity: Optional[np.ndarray] = None,
+    c_tfp_elasticity: Optional[np.ndarray] = None,
 ) -> str:
     """
     Write equilibrium results to CSV.
@@ -1249,6 +1490,8 @@ def write_equilibrium_csv(
         data["elastic_L_A_A"] = L_tfp_elasticity
     if w_tfp_elasticity is not None:
         data["elastic_w_A_A"] = w_tfp_elasticity
+    if c_tfp_elasticity is not None:
+        data["elastic_c_A_A"] = c_tfp_elasticity
     if L_cutoff_elasticity is not None:
         data["elastic_L_c_c"] = L_cutoff_elasticity
     if S_cutoff_elasticity is not None:
@@ -1280,6 +1523,10 @@ def write_equilibrium_csv_noscreening(
     logw: np.ndarray,
     e: np.ndarray,
     s: np.ndarray,
+    L_tfp_elasticity: Optional[np.ndarray] = None,
+    w_tfp_elasticity: Optional[np.ndarray] = None,
+    L_wage_elasticity_fd: Optional[np.ndarray] = None,
+    S_wage_elasticity_fd: Optional[np.ndarray] = None,
     firm_id_original: Optional[np.ndarray] = None,
 ) -> str:
     """Write equilibrium results for the no-screening model with labeled columns."""
@@ -1299,6 +1546,14 @@ def write_equilibrium_csv_noscreening(
         "y": loc_firms[:, 1],
         "comp": comp,
     }
+    if L_tfp_elasticity is not None:
+        data["elastic_L_A_A_noscreening"] = L_tfp_elasticity
+    if w_tfp_elasticity is not None:
+        data["elastic_w_A_A_noscreening"] = w_tfp_elasticity
+    if L_wage_elasticity_fd is not None:
+        data["elastic_L_w_noscreening_fd"] = L_wage_elasticity_fd
+    if S_wage_elasticity_fd is not None:
+        data["elastic_S_w_noscreening_fd"] = S_wage_elasticity_fd
     if firm_id_original is not None:
         data["firm_id_original"] = firm_id_original
 
@@ -1438,12 +1693,38 @@ def main() -> int:
         f"After rounding: {len(support_weights)} support points with positive mass (sum={support_weights.sum():.12f}, total_count={int(total_counts)})"
     )
 
-    max_iter = args.max_iter if args.max_iter is not None else params.get("max_iter", 2000)
+    max_iter = args.max_iter if args.max_iter is not None else params.get("max_iter", 10000)
     tol = args.tol if args.tol is not None else params.get("tol", 1e-8)
     eps = args.eps if args.eps is not None else params.get("eps", 1e-12)
     conduct_mode = args.conduct_mode if args.conduct_mode is not None else params.get("conduct_mode", 1)
     if conduct_mode not in (1, 2):
         raise ValueError("conduct_mode must be 1 or 2 after removing behavioral elasticities.")
+
+    mu_s_loc, sigma_s_loc = _compute_location_skill_moments(
+        support_points, support_weights, params, eps=eps
+    )
+    if mu_s_loc is not None:
+        print("[INFO] Using location-dependent skill moments.")
+
+    skill_params = {
+        "mu_x_skill": params.get("mu_x_skill"),
+        "sigma_x_skill": params.get("sigma_x_skill"),
+        "mu_a_skill": params.get("mu_a_skill"),
+        "sigma_a_skill": params.get("sigma_a_skill"),
+        "worker_mu_x": params.get("worker_mu_x"),
+        "worker_mu_y": params.get("worker_mu_y"),
+        "worker_sigma_x": params.get("worker_sigma_x"),
+        "worker_sigma_y": params.get("worker_sigma_y"),
+        "worker_rho": params.get("worker_rho"),
+        "rho_x_skill_ell_x": float(params.get("rho_x_skill_ell_x", 0.0)),
+        "rho_x_skill_ell_y": float(params.get("rho_x_skill_ell_y", 0.0)),
+        "rho_x_skill_r": float(params.get("rho_x_skill_r", 0.0)),
+        "worker_loc_mode": params.get("worker_loc_mode"),
+        "worker_r_mu": params.get("worker_r_mu"),
+        "worker_r_sigma": params.get("worker_r_sigma"),
+        "mu_s_loc": mu_s_loc,
+        "sigma_s_loc": sigma_s_loc,
+    }
 
     data = EquilibriumData(
         A=A,
@@ -1457,6 +1738,7 @@ def main() -> int:
         beta=beta,
         gamma=gamma,
         N_workers=N_workers,
+        **skill_params,
     )
 
     if args.noscreening:
@@ -1511,6 +1793,7 @@ def main() -> int:
                     beta=beta,
                     gamma=gamma,
                     N_workers=N_workers,
+                    **skill_params,
                 )
                 diagnostics_refit = compute_equilibrium_objects_noscreening(
                     logw_masked, data_masked, eps, mode=args.noscreening_mode
@@ -1535,6 +1818,178 @@ def main() -> int:
         else:
             result["L_share"] = L_share
         L_share = result["L_share"]
+
+        print("\nComputing numerical TFP elasticities for L_j and w_j (no-screening) ...")
+        logw_equil = np.log(np.maximum(w, 1e-300))
+        w_equil = np.exp(logw_equil)
+        logA_equil = np.log(np.maximum(A, 1e-300))
+        diff_steps_A = np.array([1e-8], dtype=float)
+        diff_step_w = float(diff_steps_A[0])
+        J_final = w.size
+        L_tfp_elasticity_steps = np.full((diff_steps_A.size, J_final), np.nan, dtype=float)
+        w_tfp_elasticity_steps = np.full((diff_steps_A.size, J_final), np.nan, dtype=float)
+        L_clipped = np.zeros(J_final, dtype=bool)
+
+        data_noscreen = EquilibriumData(
+            A=A,
+            xi=xi,
+            loc_firms=loc_firms,
+            support_points=support_points,
+            support_weights=support_weights,
+            mu_s=mu_s,
+            sigma_s=sigma_s,
+            alpha=alpha,
+            beta=beta,
+            gamma=gamma,
+            N_workers=N_workers,
+            **skill_params,
+        )
+        mu_s_arg, sigma_s_arg = _get_skill_moments(data_noscreen)
+
+        def _aggregate_noscreening_for_w(w_candidate: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+            if args.noscreening_mode == "heterogeneous_acceptall":
+                c_very_low = np.full_like(w_candidate, -1e10)
+                agg_local = aggregate_over_locations(
+                    support_points,
+                    support_weights,
+                    w_candidate,
+                    c_very_low,
+                    xi,
+                    loc_firms,
+                    alpha,
+                    gamma,
+                    mu_s_arg,
+                    sigma_s_arg,
+                )
+                L_share_local = np.maximum(agg_local["L_firms_nat"], eps)
+                S_nat_local = np.maximum(agg_local["S_firms_nat"], eps)
+            else:
+                agg_local = aggregate_noscreening(
+                    support_points,
+                    support_weights,
+                    w_candidate,
+                    xi,
+                    loc_firms,
+                    alpha,
+                    gamma,
+                    eps=eps,
+                )
+                L_share_local = np.maximum(agg_local["L_share"], eps)
+                S_nat_local = np.full_like(w_candidate, data_noscreen.mu_s, dtype=float)
+            L_levels_local = N_workers * L_share_local
+            return L_levels_local, S_nat_local
+
+        e_fd = np.zeros(J_final, dtype=float)
+        s_fd = np.zeros(J_final, dtype=float)
+        for j in range(J_final):
+            logw_plus = logw_equil.copy()
+            logw_minus = logw_equil.copy()
+            logw_plus[j] += diff_step_w
+            logw_minus[j] -= diff_step_w
+            w_plus = np.exp(logw_plus)
+            w_minus = np.exp(logw_minus)
+            L_plus, S_plus_all = _aggregate_noscreening_for_w(w_plus)
+            L_minus, S_minus_all = _aggregate_noscreening_for_w(w_minus)
+            L_plus_j = L_plus[j]
+            L_minus_j = L_minus[j]
+            S_plus_j = S_plus_all[j]
+            S_minus_j = S_minus_all[j]
+            e_fd[j] = (np.log(np.maximum(L_plus_j, eps)) - np.log(np.maximum(L_minus_j, eps))) / (
+                2.0 * diff_step_w
+            )
+            s_fd[j] = (np.log(np.maximum(S_plus_j, eps)) - np.log(np.maximum(S_minus_j, eps))) / (
+                2.0 * diff_step_w
+            )
+
+        def _profit_at_logw(
+            logw_val: float, firm_idx: int, A_variant: np.ndarray
+        ) -> float:
+            w_candidate = w_equil.copy()
+            w_candidate[firm_idx] = np.exp(logw_val)
+            L_levels_local, S_nat_local = _aggregate_noscreening_for_w(w_candidate)
+            LS_term_local = np.maximum(L_levels_local * S_nat_local, eps)
+            Y_local = A_variant * (LS_term_local ** (1 - beta))
+            return Y_local[firm_idx] - w_candidate[firm_idx] * L_levels_local[firm_idx]
+
+        def optimize_w_best_response(A_variant: np.ndarray, firm_idx: int) -> float:
+            x0 = np.array([logw_equil[firm_idx]], dtype=float)
+
+            def objective(logw_vec: np.ndarray) -> float:
+                return -_profit_at_logw(float(logw_vec[0]), firm_idx, A_variant)
+
+            from scipy.optimize import minimize
+
+            result_opt = minimize(
+                objective,
+                x0,
+                method="L-BFGS-B",
+                options={"ftol": 1e-12, "gtol": 1e-12, "maxiter": 1000},
+            )
+            if not result_opt.success:
+                print(
+                    f"Warning: profit optimizer for firm {firm_idx} returned {result_opt.message}; "
+                    "using best available point."
+                )
+            return float(result_opt.x[0])
+
+        for s_idx, step_A in enumerate(diff_steps_A):
+            for j in range(J_final):
+                A_plus = A.copy()
+                A_plus[j] = np.exp(logA_equil[j] + step_A)
+                logw_br_plus_j = optimize_w_best_response(A_plus, j)
+                w_response_plus = w_equil.copy()
+                w_response_plus[j] = np.exp(logw_br_plus_j)
+                L_plus = _aggregate_noscreening_for_w(w_response_plus)[0][j]
+
+                A_minus = A.copy()
+                A_minus[j] = np.exp(logA_equil[j] - step_A)
+                logw_br_minus_j = optimize_w_best_response(A_minus, j)
+                w_response_minus = w_equil.copy()
+                w_response_minus[j] = np.exp(logw_br_minus_j)
+                L_minus = _aggregate_noscreening_for_w(w_response_minus)[0][j]
+
+                w_tfp_elasticity_steps[s_idx, j] = (
+                    logw_br_plus_j - logw_br_minus_j
+                ) / (2.0 * step_A)
+                L_tfp_elasticity_steps[s_idx, j] = (np.log(L_plus) - np.log(L_minus)) / (
+                    2.0 * step_A
+                )
+
+                if L_plus <= 1.1e-12 and L_minus <= 1.1e-12:
+                    L_clipped[j] = True
+
+        w_tfp_elasticity = np.nanmedian(w_tfp_elasticity_steps, axis=0)
+        L_tfp_elasticity = np.nanmedian(L_tfp_elasticity_steps, axis=0)
+        tfp_labor_clipped = int(L_clipped.sum())
+        tfp_w_zero = int(np.sum(np.abs(w_tfp_elasticity) <= 1e-10))
+
+        result["L_tfp_elasticity"] = L_tfp_elasticity
+        result["w_tfp_elasticity"] = w_tfp_elasticity
+        result["L_wage_elasticity_fd"] = e_fd
+        result["S_wage_elasticity_fd"] = s_fd
+        print(f"  TFP step sizes used: {diff_steps_A}")
+        print(
+            f"  L elasticities w.r.t. A (min, max): ({L_tfp_elasticity.min():.4f}, {L_tfp_elasticity.max():.4f})"
+        )
+        print(
+            f"  w elasticities w.r.t. A (min, max): ({w_tfp_elasticity.min():.4f}, {w_tfp_elasticity.max():.4f})"
+        )
+        print(
+            f"  L elasticities wrt w (finite diff, step={diff_step_w:.1e}): ({e_fd.min():.4f}, {e_fd.max():.4f})"
+        )
+        print(
+            f"  S elasticities wrt w (finite diff, step={diff_step_w:.1e}): ({s_fd.min():.4f}, {s_fd.max():.4f})"
+        )
+        if tfp_labor_clipped > 0:
+            print(
+                f"  Note: {tfp_labor_clipped} firms hit the 1e-12 employment floor at baseline or under the TFP bump; "
+                "their labor elasticities are mechanically zero."
+            )
+        if tfp_w_zero > 0:
+            print(
+                f"  Note: {tfp_w_zero} firms show w elasticities ≈ 0 because their optimal wage does not move when "
+                "TFP changes (typically due to negligible employment)."
+            )
 
         print(f"\nSolution bounds (no-screening):")
         print(f"  L: [{np.min(L):.4f}, {np.max(L):.4f}]")
@@ -1562,6 +2017,10 @@ def main() -> int:
             result["logw"],
             e,
             result["s"],
+            L_tfp_elasticity=result.get("L_tfp_elasticity"),
+            w_tfp_elasticity=result.get("w_tfp_elasticity"),
+            L_wage_elasticity_fd=result.get("L_wage_elasticity_fd"),
+            S_wage_elasticity_fd=result.get("S_wage_elasticity_fd"),
             firm_id_original=firm_id_original if drop_applied else None,
         )
         print(f"Equilibrium results written to: {equilibrium_path}")
@@ -1630,6 +2089,7 @@ def main() -> int:
                 beta=beta,
                 gamma=gamma,
                 N_workers=N_workers,
+                **skill_params,
             )
             diagnostics_refit = compute_equilibrium_objects(
                 logw_masked, logc_masked, data, conduct_mode, eps
@@ -1671,6 +2131,7 @@ def main() -> int:
         beta=beta,
         gamma=gamma,
         N_workers=N_workers,
+        **skill_params,
     )
 
     print("\nComputing wage elasticities for L_j and S_j via autodiff ...")
@@ -1704,16 +2165,18 @@ def main() -> int:
         f"  S wrt cutoff (min, max): ({S_cutoff_elasticity.min():.4f}, {S_cutoff_elasticity.max():.4f})"
     )
 
-    print("\nComputing numerical TFP elasticities for L_j and w_j ...")
-    diff_step = 1e-4
-    diff_step_A = 5e-3
+    print("\nComputing numerical TFP elasticities for L_j, w_j, and c_j ...")
+    diff_step = 1e-6
+    diff_step_A = 1e-6
     logA_equil = np.log(np.maximum(A, 1e-300))
     L_tfp_elasticity = np.zeros(J_final, dtype=float)
     w_tfp_elasticity = np.zeros(J_final, dtype=float)
+    c_tfp_elasticity = np.zeros(J_final, dtype=float)
     tfp_labor_clipped = 0
     tfp_w_zero = 0
     w_equil = np.exp(logw_equil)
     c_equil = np.exp(logc_equil)
+    mu_s_arg, sigma_s_arg = _get_skill_moments(data_current)
     # Baseline profit-maximizing choices at current A (diagnostic)
     br_logw_base = np.zeros(J_final, dtype=float)
     br_logc_base = np.zeros(J_final, dtype=float)
@@ -1733,8 +2196,8 @@ def main() -> int:
             loc_firms,
             alpha,
             gamma,
-            mu_s,
-            sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
         )
 
         order_idx_local = agg["order_idx"]
@@ -1773,7 +2236,6 @@ def main() -> int:
 
     for j in range(J_final):
         br_logw_base[j], br_logc_base[j] = optimize_profit_best_response(A, j)
-
     for j in range(J_final):
         A_plus = A.copy()
         A_plus[j] = np.exp(logA_equil[j] + diff_step_A)
@@ -1794,8 +2256,8 @@ def main() -> int:
             loc_firms,
             alpha,
             gamma,
-            mu_s,
-            sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
         )
         L_plus = np.maximum(
             np.asarray(agg_plus["L_firms_nat"], dtype=float)[j],
@@ -1821,8 +2283,8 @@ def main() -> int:
             loc_firms,
             alpha,
             gamma,
-            mu_s,
-            sigma_s,
+            mu_s_arg,
+            sigma_s_arg,
         )
         L_minus = np.maximum(
             np.asarray(agg_minus["L_firms_nat"], dtype=float)[j],
@@ -1830,6 +2292,7 @@ def main() -> int:
         )
 
         w_tfp_elasticity[j] = (logw_br_plus_j - logw_br_minus_j) / (2.0 * diff_step_A)
+        c_tfp_elasticity[j] = (logc_br_plus_j - logc_br_minus_j) / (2.0 * diff_step_A)
         L_tfp_elasticity[j] = (np.log(L_plus) - np.log(L_minus)) / (2.0 * diff_step_A)
 
         if L_plus <= 1.1e-12 and L_minus <= 1.1e-12:
@@ -1839,16 +2302,19 @@ def main() -> int:
 
     result["L_tfp_elasticity"] = L_tfp_elasticity
     result["w_tfp_elasticity"] = w_tfp_elasticity
-
+    result["c_tfp_elasticity"] = c_tfp_elasticity
     print(
         f"  L elasticities w.r.t. A (min, max): ({L_tfp_elasticity.min():.4f}, {L_tfp_elasticity.max():.4f})"
     )
     print(
         f"  w elasticities w.r.t. A (min, max): ({w_tfp_elasticity.min():.4f}, {w_tfp_elasticity.max():.4f})"
     )
+    print(
+        f"  c elasticities w.r.t. A (min, max): ({c_tfp_elasticity.min():.4f}, {c_tfp_elasticity.max():.4f})"
+    )
     if tfp_labor_clipped > 0:
         print(
-            f"  Note: {tfp_labor_clipped} firms hit the 1e-12 employment floor under both TFP shocks; "
+            f"  Note: {tfp_labor_clipped} firms hit the 1e-12 employment floor at baseline or under the TFP bump; "
             "their labor elasticities are mechanically zero."
         )
     if tfp_w_zero > 0:
@@ -1897,6 +2363,7 @@ def main() -> int:
         S_cutoff_elasticity=S_cutoff_elasticity,
         L_tfp_elasticity=L_tfp_elasticity,
         w_tfp_elasticity=w_tfp_elasticity,
+        c_tfp_elasticity=c_tfp_elasticity,
     )
     print(f"Equilibrium results written to: {equilibrium_path}")
 
@@ -1916,6 +2383,7 @@ def main() -> int:
             beta=beta,
             gamma=gamma,
             N_workers=N_workers,
+            **skill_params,
         )
         for j_idx, fid in enumerate(firm_id):
             out_path = profit_dir / f"firm_{fid}_profit_surface.png"

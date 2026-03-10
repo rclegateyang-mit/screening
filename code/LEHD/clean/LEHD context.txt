@@ -1,0 +1,21 @@
+here are two worker-specific files in the LEHD:
+
+1. EHF (Employment History Files)
+The EHF is essentially the "master list" of employment for an individual. It is person-centric.
+
+Unit of Observation: One record per person, per year.
+Purpose: It tracks an individual's longitudinal path across the labor market.
+Data Content: It aggregates all earnings for a person within a given year. It’s designed to show a person's total labor market engagement, including transitions between jobs, periods of unemployment, and total annual earnings.
+Best Use Case: Use this if your research is focused on worker outcomes, such as "How do a worker's total earnings change over 10 years?" or "Does a worker stay in the same industry over time?"
+
+
+2. JHF (Job History Files)
+The JHF is job-centric. It focuses on the specific link between a worker and a specific employer (SEIN - State Employer Identification Number).
+
+Unit of Observation: One record per unique job (worker-firm pair).
+Purpose: It documents the characteristics of the "job" itself. A worker who has three different employers in one year will have one EHF record for that year but multiple JHF records.
+Data Content: It includes start dates, end dates, and quarterly earnings specifically tied to that employer. It often contains "beginning-of-quarter" and "end-of-quarter" employment indicators to help identify job stability.
+Best Use Case: Use this if your research is focused on firm-worker dynamics, such as "What is the average tenure of employees at this firm?" or "How many people were hired and then left within the same quarter?"
+
+
+I would have thought we want to work with the EHF. Unfortunately, the SAS file I have available offline works with the JHF, which is more complicated to work with and I'm not sure it has any advantages.

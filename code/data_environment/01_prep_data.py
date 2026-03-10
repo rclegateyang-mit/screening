@@ -31,10 +31,13 @@ except ImportError:  # pragma: no cover - script execution fallback
 class WorkerDistConfig:
     """Worker location distribution parameters."""
     mu_x: float = 0.0
-    mu_y: float = 2.0
+    mu_y: float = 0.0
     sigma_x: float = 5.0
     sigma_y: float = 4.0
     rho: float = 0.0  # correlation in [-1,1]; if ≠0, use Cholesky for Σ
+    loc_mode: str = "cartesian"  # cartesian or polar
+    r_mu: float = 0.0
+    r_sigma: float = 1.0
 
 
 @dataclass
@@ -55,6 +58,9 @@ class CoreParams:
     sigma_x_skill: float = 2.60
     mu_a_skill: float = 0.0
     sigma_a_skill: float = 1.5
+    rho_x_skill_ell_x: float = 0.0
+    rho_x_skill_ell_y: float = 0.0
+    rho_x_skill_r: float = 0.0
     # Derived skill parameters (computed from components)
     mu_s: float = 10.009  # Will be computed as mu_x_skill + mu_a_skill
     sigma_s: float = 3.0  # Will be computed as sqrt(sigma_x_skill^2 + sigma_a_skill^2)
@@ -76,6 +82,7 @@ class CoreParams:
 class FirmConfig:
     """Firm generation parameters."""
     J: int = 10
+    mu_xi: float = 0.0
     # Fundamentals covariance
     sigma_A: float = 0.37
     sigma_xi: float = 0.2
@@ -129,13 +136,19 @@ def write_parameters_template(path: str) -> None:
         {'parameter': 'gamma', 'value': 0.5, 'unit': 'NA', 'description': 'Distance decay parameter'},
         {'parameter': 'conduct_mode', 'value': 1, 'unit': 'NA', 'description': '0=monopsonistic (model ε, ε^S), 1=status quo, 2=behavioral ε~N(alpha/sigma_s,sigma_s^2), ε^S~N(1, 0.25)'},
         {'parameter': 'N_workers', 'value': 100000.0, 'unit': 'workers', 'description': 'Total number of workers in the market'},
+        {'parameter': 'rho_x_skill_ell_x', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between x_skill and worker x-location'},
+        {'parameter': 'rho_x_skill_ell_y', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between x_skill and worker y-location'},
+        {'parameter': 'rho_x_skill_r', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between x_skill and distance from worker mean location'},
         
         # Worker distribution parameters
+        {'parameter': 'worker_loc_mode', 'value': 'cartesian', 'unit': 'NA', 'description': 'Worker location distribution: cartesian or polar'},
         {'parameter': 'worker_mu_x', 'value': 0.0, 'unit': 'miles', 'description': 'Mean x-coordinate of worker distribution'},
         {'parameter': 'worker_mu_y', 'value': 0.0, 'unit': 'miles', 'description': 'Mean y-coordinate of worker distribution'},
         {'parameter': 'worker_sigma_x', 'value': 2.0, 'unit': 'miles', 'description': 'Standard deviation of worker x-coordinate'},
         {'parameter': 'worker_sigma_y', 'value': 1.414, 'unit': 'miles', 'description': 'Standard deviation of worker y-coordinate'},
         {'parameter': 'worker_rho', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between worker x and y coordinates'},
+        {'parameter': 'worker_r_mu', 'value': 0.0, 'unit': 'miles', 'description': 'Mean radius for polar worker location distribution'},
+        {'parameter': 'worker_r_sigma', 'value': 1.0, 'unit': 'miles', 'description': 'Std deviation of radius for polar worker location distribution'},
         
         # Quadrature parameters
         {'parameter': 'quad_kind', 'value': 'tensor_gh', 'unit': 'NA', 'description': 'Quadrature method (tensor_gh only)'},
@@ -149,6 +162,7 @@ def write_parameters_template(path: str) -> None:
         {'parameter': 'sigma_A', 'value': 0.37, 'unit': 'NA', 'description': 'Standard deviation of log TFP'},
         {'parameter': 'sigma_xi', 'value': 0.2, 'unit': 'NA', 'description': 'Standard deviation of amenity shock'},
         {'parameter': 'rho_Axi', 'value': 0.44, 'unit': 'NA', 'description': 'Correlation between log TFP and amenity shock'},
+        {'parameter': 'mu_xi', 'value': 0.0, 'unit': 'NA', 'description': 'Mean of amenity shock'},
     ]
     
     df = pd.DataFrame(template_data)
@@ -179,6 +193,12 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
         config.core.mu_a_skill = cli_overrides['mu_a_skill']
     if 'sigma_a_skill' in cli_overrides:
         config.core.sigma_a_skill = cli_overrides['sigma_a_skill']
+    if 'rho_x_skill_ell_x' in cli_overrides:
+        config.core.rho_x_skill_ell_x = cli_overrides['rho_x_skill_ell_x']
+    if 'rho_x_skill_ell_y' in cli_overrides:
+        config.core.rho_x_skill_ell_y = cli_overrides['rho_x_skill_ell_y']
+    if 'rho_x_skill_r' in cli_overrides:
+        config.core.rho_x_skill_r = cli_overrides['rho_x_skill_r']
     
     # Legacy parameters (for backward compatibility)
     if 'mu_s' in cli_overrides:
@@ -206,6 +226,12 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
         config.worker.sigma_y = cli_overrides['worker_sigma_y']
     if 'worker_rho' in cli_overrides:
         config.worker.rho = cli_overrides['worker_rho']
+    if 'worker_loc_mode' in cli_overrides:
+        config.worker.loc_mode = cli_overrides['worker_loc_mode']
+    if 'worker_r_mu' in cli_overrides:
+        config.worker.r_mu = cli_overrides['worker_r_mu']
+    if 'worker_r_sigma' in cli_overrides:
+        config.worker.r_sigma = cli_overrides['worker_r_sigma']
     
     if 'quad_n_x' in cli_overrides:
         config.quad.n_x = cli_overrides['quad_n_x']
@@ -222,6 +248,8 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
         config.firm.sigma_xi = cli_overrides['sigma_xi']
     if 'rho_Axi' in cli_overrides:
         config.firm.rho_Axi = cli_overrides['rho_Axi']
+    if 'mu_xi' in cli_overrides:
+        config.firm.mu_xi = cli_overrides['mu_xi']
     
     # Recompute derived parameters after applying CLI overrides
     config.core.__post_init__()
@@ -234,6 +262,9 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
     effective_data.append({'parameter': 'sigma_x_skill', 'value': config.core.sigma_x_skill, 'source': 'CLI' if 'sigma_x_skill' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'mu_a_skill', 'value': config.core.mu_a_skill, 'source': 'CLI' if 'mu_a_skill' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'sigma_a_skill', 'value': config.core.sigma_a_skill, 'source': 'CLI' if 'sigma_a_skill' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'rho_x_skill_ell_x', 'value': config.core.rho_x_skill_ell_x, 'source': 'CLI' if 'rho_x_skill_ell_x' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'rho_x_skill_ell_y', 'value': config.core.rho_x_skill_ell_y, 'source': 'CLI' if 'rho_x_skill_ell_y' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'rho_x_skill_r', 'value': config.core.rho_x_skill_r, 'source': 'CLI' if 'rho_x_skill_r' in cli_overrides else 'DEFAULT'})
     # Core parameters - derived skill parameters (computed from components)
     effective_data.append({'parameter': 'mu_s', 'value': config.core.mu_s, 'source': 'COMPUTED'})
     effective_data.append({'parameter': 'sigma_s', 'value': config.core.sigma_s, 'source': 'COMPUTED'})
@@ -248,11 +279,14 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
     effective_data.append({'parameter': 'N_workers', 'value': config.core.N_workers, 'source': 'CLI' if 'N_workers' in cli_overrides else 'DEFAULT'})
     
     # Worker parameters
+    effective_data.append({'parameter': 'worker_loc_mode', 'value': config.worker.loc_mode, 'source': 'CLI' if 'worker_loc_mode' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'worker_mu_x', 'value': config.worker.mu_x, 'source': 'CLI' if 'worker_mu_x' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'worker_mu_y', 'value': config.worker.mu_y, 'source': 'CLI' if 'worker_mu_y' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'worker_sigma_x', 'value': config.worker.sigma_x, 'source': 'CLI' if 'worker_sigma_x' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'worker_sigma_y', 'value': config.worker.sigma_y, 'source': 'CLI' if 'worker_sigma_y' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'worker_rho', 'value': config.worker.rho, 'source': 'CLI' if 'worker_rho' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'worker_r_mu', 'value': config.worker.r_mu, 'source': 'CLI' if 'worker_r_mu' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'worker_r_sigma', 'value': config.worker.r_sigma, 'source': 'CLI' if 'worker_r_sigma' in cli_overrides else 'DEFAULT'})
     
     # Quadrature parameters
     effective_data.append({'parameter': 'quad_kind', 'value': config.quad.kind, 'source': 'DEFAULT'})
@@ -266,6 +300,7 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
     effective_data.append({'parameter': 'sigma_A', 'value': config.firm.sigma_A, 'source': 'CLI' if 'sigma_A' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'sigma_xi', 'value': config.firm.sigma_xi, 'source': 'CLI' if 'sigma_xi' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'rho_Axi', 'value': config.firm.rho_Axi, 'source': 'CLI' if 'rho_Axi' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'mu_xi', 'value': config.firm.mu_xi, 'source': 'CLI' if 'mu_xi' in cli_overrides else 'DEFAULT'})
     
     effective_table = pd.DataFrame(effective_data)
     
@@ -313,7 +348,7 @@ def build_covariance(sigma_A: float, sigma_xi: float, rho: float) -> np.ndarray:
     return cov
 
 
-def draw_firm_fundamentals(J: int, cov: np.ndarray, rng: np.random.Generator) -> pd.DataFrame:
+def draw_firm_fundamentals(J: int, cov: np.ndarray, rng: np.random.Generator, mu_xi: float = 0.0) -> pd.DataFrame:
     """
     Draw firm fundamentals from bivariate normal distribution.
     
@@ -321,12 +356,13 @@ def draw_firm_fundamentals(J: int, cov: np.ndarray, rng: np.random.Generator) ->
         J: Number of firms
         cov: 2x2 covariance matrix
         rng: Random number generator
+        mu_xi: Mean of amenity shock xi
         
     Returns:
         DataFrame with firm_id, logA, A, xi
     """
     # Draw from multivariate normal
-    fundamentals = rng.multivariate_normal(mean=[0, 0], cov=cov, size=J)
+    fundamentals = rng.multivariate_normal(mean=[0, mu_xi], cov=cov, size=J)
     logA, xi = fundamentals[:, 0], fundamentals[:, 1]
     
     # Compute A = exp(logA)
@@ -440,6 +476,44 @@ def gh_tensor_2d(mu: np.ndarray, Sigma: np.ndarray, n_x: int, n_y: int,
     return P, W
 
 
+def gh_polar_2d(
+    center: np.ndarray,
+    r_mu: float,
+    r_sigma: float,
+    n_r: int,
+    n_theta: int,
+    normalize: bool = True,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Build polar quadrature with r ~ N(r_mu, r_sigma^2), theta uniform."""
+    if n_r < 1 or n_theta < 1:
+        raise ValueError("Polar quadrature requires n_r and n_theta >= 1.")
+    if r_sigma <= 0:
+        raise ValueError("worker_r_sigma must be positive for polar locations.")
+
+    z_r, w_r = gh_nodes_weights_std_normal(n_r)
+    r_vals = r_mu + r_sigma * z_r
+    mask = r_vals > 0.0
+    if not np.any(mask):
+        raise ValueError("Polar radii are non-positive; adjust worker_r_mu or worker_r_sigma.")
+    r_vals = r_vals[mask]
+    w_r = w_r[mask]
+    if normalize:
+        w_r = w_r / w_r.sum()
+
+    theta_vals = np.linspace(0.0, 2.0 * np.pi, n_theta, endpoint=False)
+    w_theta = np.full(n_theta, 1.0 / n_theta)
+
+    R, Theta = np.meshgrid(r_vals, theta_vals, indexing="xy")
+    x = center[0] + R * np.cos(Theta)
+    y = center[1] + R * np.sin(Theta)
+
+    points = np.column_stack([x.ravel(), y.ravel()])
+    weights = (w_theta[:, None] * w_r[None, :]).ravel()
+    if normalize:
+        weights = weights / weights.sum()
+    return points, weights
+
+
 def generate_support_points(config: ModelConfig, out_path: str) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate Gaussian-Hermite quadrature points from worker distribution parameters.
@@ -451,15 +525,25 @@ def generate_support_points(config: ModelConfig, out_path: str) -> Tuple[np.ndar
     Returns:
         Tuple of (points, weights)
     """
-    # Build covariance matrix from config
     mu = np.array([config.worker.mu_x, config.worker.mu_y])
-    Sigma = np.array([
-        [config.worker.sigma_x**2, config.worker.rho * config.worker.sigma_x * config.worker.sigma_y],
-        [config.worker.rho * config.worker.sigma_x * config.worker.sigma_y, config.worker.sigma_y**2]
-    ])
-    
-    # Generate quadrature points
-    points, weights = gh_tensor_2d(mu, Sigma, config.quad.n_x, config.quad.n_y, normalize=config.quad.normalize)
+    if config.worker.loc_mode not in ("cartesian", "polar"):
+        raise ValueError(f"worker_loc_mode must be cartesian or polar; got {config.worker.loc_mode}.")
+    if config.worker.loc_mode == "polar":
+        points, weights = gh_polar_2d(
+            mu,
+            config.worker.r_mu,
+            config.worker.r_sigma,
+            config.quad.n_x,
+            config.quad.n_y,
+            normalize=config.quad.normalize,
+        )
+    else:
+        Sigma = np.array([
+            [config.worker.sigma_x**2, config.worker.rho * config.worker.sigma_x * config.worker.sigma_y],
+            [config.worker.rho * config.worker.sigma_x * config.worker.sigma_y, config.worker.sigma_y**2]
+        ])
+        # Generate quadrature points
+        points, weights = gh_tensor_2d(mu, Sigma, config.quad.n_x, config.quad.n_y, normalize=config.quad.normalize)
     
     # Adjust weights: scale by N_workers, round to nearest integer, renormalize
     weights_scaled = weights * config.core.N_workers
@@ -512,11 +596,19 @@ def main():
     parser.add_argument("--seed", type=int, default=123, help="Random seed")
     
     # Worker distribution parameters
+    parser.add_argument(
+        "--worker_loc_mode",
+        type=str,
+        choices=["cartesian", "polar"],
+        help="Worker location distribution (cartesian or polar)",
+    )
     parser.add_argument("--worker_mu_x", type=float, help="Mean x-coordinate of worker distribution")
     parser.add_argument("--worker_mu_y", type=float, help="Mean y-coordinate of worker distribution")
     parser.add_argument("--worker_sigma_x", type=float, help="Standard deviation of worker x-coordinate")
     parser.add_argument("--worker_sigma_y", type=float, help="Standard deviation of worker y-coordinate")
     parser.add_argument("--worker_rho", type=float, help="Correlation between worker x and y coordinates")
+    parser.add_argument("--worker_r_mu", type=float, help="Mean radius for polar worker locations")
+    parser.add_argument("--worker_r_sigma", type=float, help="Std deviation of radius for polar worker locations")
     
     # Quadrature parameters
     parser.add_argument("--quad_n_x", type=int, help="Number of Gauss-Hermite nodes in x dimension")
@@ -528,6 +620,9 @@ def main():
     parser.add_argument("--sigma_x_skill", type=float, help="Standard deviation of x_skill component (default: 2.60)")
     parser.add_argument("--mu_a_skill", type=float, help="Mean of a_skill component (default: 0.0)")
     parser.add_argument("--sigma_a_skill", type=float, help="Standard deviation of a_skill component (default: 1.5)")
+    parser.add_argument("--rho_x_skill_ell_x", type=float, help="Correlation between x_skill and worker x-location")
+    parser.add_argument("--rho_x_skill_ell_y", type=float, help="Correlation between x_skill and worker y-location")
+    parser.add_argument("--rho_x_skill_r", type=float, help="Correlation between x_skill and distance from worker mean location")
     # Legacy parameters (for backward compatibility, will be overridden by computed values)
     parser.add_argument("--mu_s", type=float, help="DEPRECATED: Use --mu_x_skill and --mu_a_skill instead")
     parser.add_argument("--sigma_s", type=float, help="DEPRECATED: Use --sigma_x_skill and --sigma_a_skill instead")
@@ -540,7 +635,13 @@ def main():
     # Firm fundamentals parameters
     parser.add_argument("--sigma_A", type=float, help="Standard deviation of log TFP")
     parser.add_argument("--sigma_xi", type=float, help="Standard deviation of amenity shock")
+    parser.add_argument("--mu_xi", type=float, help="Mean of amenity shock")
     parser.add_argument("--rho_Axi", type=float, help="Correlation between log TFP and amenity shock")
+    parser.add_argument(
+        "--firms_input_path",
+        type=str,
+        help="Optional CSV path to specify firms manually with columns firm_id,A,xi,x,y (optional: comp, logA). Overrides random generation.",
+    )
     
     # Output parameters
     parser.add_argument(
@@ -557,10 +658,12 @@ def main():
     
     # Build CLI overrides dictionary
     cli_overrides = {}
-    for param in ['J', 'mu_x_skill', 'sigma_x_skill', 'mu_a_skill', 'sigma_a_skill', 
+    for param in ['J', 'mu_x_skill', 'sigma_x_skill', 'mu_a_skill', 'sigma_a_skill',
+                 'rho_x_skill_ell_x', 'rho_x_skill_ell_y', 'rho_x_skill_r',
                  'mu_s', 'sigma_s', 'alpha', 'beta', 'gamma', 'conduct_mode', 'N_workers',
-                 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x', 'worker_sigma_y', 'worker_rho',
-                 'quad_n_x', 'quad_n_y', 'sigma_A', 'sigma_xi', 'rho_Axi']:
+                 'worker_loc_mode', 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x', 'worker_sigma_y',
+                 'worker_rho', 'worker_r_mu', 'worker_r_sigma',
+                 'quad_n_x', 'quad_n_y', 'sigma_A', 'sigma_xi', 'rho_Axi', 'mu_xi']:
         value = getattr(args, param, None)
         if value is not None:
             cli_overrides[param] = value
@@ -577,49 +680,87 @@ def main():
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    # Print configuration summary
+    input_firms_df: Optional[pd.DataFrame] = None
+    if args.firms_input_path:
+        input_path = Path(args.firms_input_path)
+        if not input_path.exists():
+            raise FileNotFoundError(f"firms_input_path does not exist: {input_path}")
+        input_firms_df = pd.read_csv(input_path)
+        required_cols = {"firm_id", "A", "xi", "x", "y"}
+        missing_cols = required_cols - set(input_firms_df.columns)
+        if missing_cols:
+            raise ValueError(f"Input firms CSV missing required columns: {missing_cols}")
+        if "logA" not in input_firms_df.columns:
+            input_firms_df["logA"] = np.log(np.maximum(input_firms_df["A"].to_numpy(dtype=float), 1e-300))
+        if "comp" not in input_firms_df.columns:
+            input_firms_df["comp"] = 1
+        input_firms_df = input_firms_df[["firm_id", "logA", "A", "xi", "comp", "x", "y"]].copy()
+        config.firm.J = int(len(input_firms_df))
+        print(f"\nUsing manually specified firms from {input_path} (J={config.firm.J})")
+
+    # Print configuration summary (after applying any manual firm overrides)
     print("\n=== CONFIGURATION SUMMARY ===")
     print(f"[CONFIG] core:  mu_s={config.core.mu_s}, sigma_s={config.core.sigma_s}, alpha={config.core.alpha}, beta={config.core.beta}, gamma={config.core.gamma}, conduct_mode={config.core.conduct_mode}, N_workers={config.core.N_workers}")
-    print(f"[CONFIG] worker: mu=({config.worker.mu_x}, {config.worker.mu_y}), sigma=({config.worker.sigma_x}, {config.worker.sigma_y}), rho={config.worker.rho}")
+    print(f"[CONFIG] skill-location corr: rho_x_skill_ell_x={config.core.rho_x_skill_ell_x}, rho_x_skill_ell_y={config.core.rho_x_skill_ell_y}")
+    print(
+        "[CONFIG] worker: mode={}, mu=({}, {}), sigma=({}, {}), rho={}, r_mu={}, r_sigma={}".format(
+            config.worker.loc_mode,
+            config.worker.mu_x,
+            config.worker.mu_y,
+            config.worker.sigma_x,
+            config.worker.sigma_y,
+            config.worker.rho,
+            config.worker.r_mu,
+            config.worker.r_sigma,
+        )
+    )
     print(f"[CONFIG] quad:   kind={config.quad.kind}, n_x={config.quad.n_x}, n_y={config.quad.n_y}, normalize={config.quad.normalize}")
-    print(f"[CONFIG] firm:   J={config.firm.J}, sigma_A={config.firm.sigma_A}, sigma_xi={config.firm.sigma_xi}, rho_Axi={config.firm.rho_Axi}")
-    
-    # Dump effective configuration
+    print(f"[CONFIG] firm:   J={config.firm.J}, sigma_A={config.firm.sigma_A}, sigma_xi={config.firm.sigma_xi}, rho_Axi={config.firm.rho_Axi}, mu_xi={config.firm.mu_xi}")
+
+    if input_firms_df is not None:
+        mask_J = effective_table["parameter"] == "J"
+        effective_table.loc[mask_J, "value"] = config.firm.J
+        effective_table.loc[mask_J, "source"] = "MANUAL"
+
+    # Dump effective configuration (after any manual firm overrides)
     dump_effective_config_csv(effective_table, out_dir / "parameters_effective.csv")
-    
-    # Generate firm data
-    print(f"\nGenerating {config.firm.J} firms...")
-    
-    # Build covariance matrix
-    cov = build_covariance(config.firm.sigma_A, config.firm.sigma_xi, config.firm.rho_Axi)
-    
-    # Draw fundamentals
-    fundamentals_df = draw_firm_fundamentals(config.firm.J, cov, rng)
-    
-    # Draw locations
-    locations_df = draw_firm_locations(config.firm.J, config.firm.centers, config.firm.sds, config.firm.weights, rng)
-    
-    # Merge fundamentals and locations
-    firms_df = pd.merge(fundamentals_df, locations_df, on='firm_id')
-    
-    # Add behavioral elasticities if conduct_mode=2
-    if config.core.conduct_mode == 2:
-        # Draw behavioral elasticities: eps_L ~ N(alpha, 1), eps_S ~ N(1, 0.25)
-        mean_eps_L = 3
-        std_eps_L = 1
-        mean_eps_S = 1
-        std_eps_S = 2
+
+    # Generate firm data (unless manual input provided)
+    if input_firms_df is None:
+        print(f"\nGenerating {config.firm.J} firms...")
         
-        eps_L_behavioral = rng.normal(mean_eps_L, std_eps_L, config.firm.J)
-        eps_S_behavioral = rng.normal(mean_eps_S, std_eps_S, config.firm.J)
+        # Build covariance matrix
+        cov = build_covariance(config.firm.sigma_A, config.firm.sigma_xi, config.firm.rho_Axi)
         
-        # Add to firms DataFrame
-        firms_df['eps_L_behavioral'] = eps_L_behavioral
-        firms_df['eps_S_behavioral'] = eps_S_behavioral
+        # Draw fundamentals
+        fundamentals_df = draw_firm_fundamentals(config.firm.J, cov, rng, mu_xi=config.firm.mu_xi)
         
-        print(f"  Behavioral elasticities drawn:")
-        print(f"    eps_L: mean={eps_L_behavioral.mean():.4f}, std={eps_L_behavioral.std():.4f}")
-        print(f"    eps_S: mean={eps_S_behavioral.mean():.4f}, std={eps_S_behavioral.std():.4f}")
+        # Draw locations
+        locations_df = draw_firm_locations(config.firm.J, config.firm.centers, config.firm.sds, config.firm.weights, rng)
+        
+        # Merge fundamentals and locations
+        firms_df = pd.merge(fundamentals_df, locations_df, on='firm_id')
+        
+        # Add behavioral elasticities if conduct_mode=2
+        if config.core.conduct_mode == 2:
+            # Draw behavioral elasticities: eps_L ~ N(alpha, 1), eps_S ~ N(1, 0.25)
+            mean_eps_L = 3
+            std_eps_L = 1
+            mean_eps_S = 1
+            std_eps_S = 2
+            
+            eps_L_behavioral = rng.normal(mean_eps_L, std_eps_L, config.firm.J)
+            eps_S_behavioral = rng.normal(mean_eps_S, std_eps_S, config.firm.J)
+            
+            # Add to firms DataFrame
+            firms_df['eps_L_behavioral'] = eps_L_behavioral
+            firms_df['eps_S_behavioral'] = eps_S_behavioral
+            
+            print(f"  Behavioral elasticities drawn:")
+            print(f"    eps_L: mean={eps_L_behavioral.mean():.4f}, std={eps_L_behavioral.std():.4f}")
+            print(f"    eps_S: mean={eps_S_behavioral.mean():.4f}, std={eps_S_behavioral.std():.4f}")
+    else:
+        firms_df = input_firms_df.copy()
     
     # Sort by firm_id and reindex
     firms_df = firms_df.sort_values('firm_id').reset_index(drop=True)
