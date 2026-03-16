@@ -17,10 +17,10 @@ import pandas as pd
 from numpy.polynomial.hermite import hermgauss
 
 try:
-    from .. import get_data_dir
+    from .. import get_data_subdir, DATA_RAW
 except ImportError:  # pragma: no cover - script execution fallback
     sys.path.append(str(Path(__file__).resolve().parents[2]))
-    from code import get_data_dir  # type: ignore
+    from code import get_data_subdir, DATA_RAW  # type: ignore
 
 
 # =============================================================================
@@ -56,26 +56,26 @@ class CoreParams:
     # Skill distribution components
     mu_x_skill: float = 10.009
     sigma_x_skill: float = 2.60
-    mu_a_skill: float = 0.0
-    sigma_a_skill: float = 1.5
+    mu_e: float = 0.0
+    sigma_e: float = 1.5
     rho_x_skill_ell_x: float = 0.0
     rho_x_skill_ell_y: float = 0.0
     rho_x_skill_r: float = 0.0
     # Derived skill parameters (computed from components)
-    mu_s: float = 10.009  # Will be computed as mu_x_skill + mu_a_skill
-    sigma_s: float = 3.0  # Will be computed as sqrt(sigma_x_skill^2 + sigma_a_skill^2)
+    mu_s: float = 10.009  # Will be computed as mu_x_skill + mu_e
+    sigma_s: float = 3.0  # Will be computed as sqrt(sigma_x_skill^2 + sigma_e^2)
     # Other model parameters
-    alpha: float = 5.0
-    beta: float = 0.2
-    gamma: float = 0.05
+    eta: float = 5.0
+    alpha: float = 0.2
+    tau: float = 0.05
     conduct_mode: int = 1   # 1 = status quo, 0 = elasticity-based
     N_workers: float = 100.0  # Total number of workers in the market
     
     def __post_init__(self):
         """Compute derived skill parameters from components."""
         import math
-        self.mu_s = self.mu_x_skill + self.mu_a_skill
-        self.sigma_s = math.sqrt(self.sigma_x_skill**2 + self.sigma_a_skill**2)
+        self.mu_s = self.mu_x_skill + self.mu_e
+        self.sigma_s = math.sqrt(self.sigma_x_skill**2 + self.sigma_e**2)
 
 
 @dataclass
@@ -131,10 +131,10 @@ def write_parameters_template(path: str) -> None:
         # Core parameters
         {'parameter': 'mu_s', 'value': 0.0, 'unit': 'miles', 'description': 'Mean of truncated normal skill distribution'},
         {'parameter': 'sigma_s', 'value': 1.0, 'unit': 'miles', 'description': 'Standard deviation of skill distribution'},
-        {'parameter': 'alpha', 'value': 1.0, 'unit': 'NA', 'description': 'Wage elasticity parameter'},
-        {'parameter': 'beta', 'value': 0.3, 'unit': 'NA', 'description': 'Production function parameter'},
-        {'parameter': 'gamma', 'value': 0.5, 'unit': 'NA', 'description': 'Distance decay parameter'},
-        {'parameter': 'conduct_mode', 'value': 1, 'unit': 'NA', 'description': '0=monopsonistic (model ε, ε^S), 1=status quo, 2=behavioral ε~N(alpha/sigma_s,sigma_s^2), ε^S~N(1, 0.25)'},
+        {'parameter': 'eta', 'value': 1.0, 'unit': 'NA', 'description': 'Wage elasticity parameter'},
+        {'parameter': 'alpha', 'value': 0.3, 'unit': 'NA', 'description': 'Production function parameter'},
+        {'parameter': 'tau', 'value': 0.5, 'unit': 'NA', 'description': 'Distance decay / commuting cost parameter'},
+        {'parameter': 'conduct_mode', 'value': 1, 'unit': 'NA', 'description': '0=monopsonistic (model ε, ε^S), 1=status quo, 2=behavioral ε~N(eta/sigma_s,sigma_s^2), ε^S~N(1, 0.25)'},
         {'parameter': 'N_workers', 'value': 100000.0, 'unit': 'workers', 'description': 'Total number of workers in the market'},
         {'parameter': 'rho_x_skill_ell_x', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between x_skill and worker x-location'},
         {'parameter': 'rho_x_skill_ell_y', 'value': 0.0, 'unit': 'NA', 'description': 'Correlation between x_skill and worker y-location'},
@@ -189,10 +189,10 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
         config.core.mu_x_skill = cli_overrides['mu_x_skill']
     if 'sigma_x_skill' in cli_overrides:
         config.core.sigma_x_skill = cli_overrides['sigma_x_skill']
-    if 'mu_a_skill' in cli_overrides:
-        config.core.mu_a_skill = cli_overrides['mu_a_skill']
-    if 'sigma_a_skill' in cli_overrides:
-        config.core.sigma_a_skill = cli_overrides['sigma_a_skill']
+    if 'mu_e' in cli_overrides:
+        config.core.mu_e = cli_overrides['mu_e']
+    if 'sigma_e' in cli_overrides:
+        config.core.sigma_e = cli_overrides['sigma_e']
     if 'rho_x_skill_ell_x' in cli_overrides:
         config.core.rho_x_skill_ell_x = cli_overrides['rho_x_skill_ell_x']
     if 'rho_x_skill_ell_y' in cli_overrides:
@@ -205,12 +205,12 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
         config.core.mu_s = cli_overrides['mu_s']
     if 'sigma_s' in cli_overrides:
         config.core.sigma_s = cli_overrides['sigma_s']
+    if 'eta' in cli_overrides:
+        config.core.eta = cli_overrides['eta']
     if 'alpha' in cli_overrides:
         config.core.alpha = cli_overrides['alpha']
-    if 'beta' in cli_overrides:
-        config.core.beta = cli_overrides['beta']
-    if 'gamma' in cli_overrides:
-        config.core.gamma = cli_overrides['gamma']
+    if 'tau' in cli_overrides:
+        config.core.tau = cli_overrides['tau']
     if 'conduct_mode' in cli_overrides:
         config.core.conduct_mode = cli_overrides['conduct_mode']
     if 'N_workers' in cli_overrides:
@@ -260,8 +260,8 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
     # Core parameters - skill distribution components
     effective_data.append({'parameter': 'mu_x_skill', 'value': config.core.mu_x_skill, 'source': 'CLI' if 'mu_x_skill' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'sigma_x_skill', 'value': config.core.sigma_x_skill, 'source': 'CLI' if 'sigma_x_skill' in cli_overrides else 'DEFAULT'})
-    effective_data.append({'parameter': 'mu_a_skill', 'value': config.core.mu_a_skill, 'source': 'CLI' if 'mu_a_skill' in cli_overrides else 'DEFAULT'})
-    effective_data.append({'parameter': 'sigma_a_skill', 'value': config.core.sigma_a_skill, 'source': 'CLI' if 'sigma_a_skill' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'mu_e', 'value': config.core.mu_e, 'source': 'CLI' if 'mu_e' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'sigma_e', 'value': config.core.sigma_e, 'source': 'CLI' if 'sigma_e' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'rho_x_skill_ell_x', 'value': config.core.rho_x_skill_ell_x, 'source': 'CLI' if 'rho_x_skill_ell_x' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'rho_x_skill_ell_y', 'value': config.core.rho_x_skill_ell_y, 'source': 'CLI' if 'rho_x_skill_ell_y' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'rho_x_skill_r', 'value': config.core.rho_x_skill_r, 'source': 'CLI' if 'rho_x_skill_r' in cli_overrides else 'DEFAULT'})
@@ -269,12 +269,12 @@ def load_config(cli_overrides: Dict[str, Any]) -> Tuple[ModelConfig, pd.DataFram
     effective_data.append({'parameter': 'mu_s', 'value': config.core.mu_s, 'source': 'COMPUTED'})
     effective_data.append({'parameter': 'sigma_s', 'value': config.core.sigma_s, 'source': 'COMPUTED'})
     # Legacy parameters for backward compatibility with GMM solver
-    effective_data.append({'parameter': 'mu_a', 'value': config.core.mu_a_skill, 'source': 'COMPUTED'})
-    effective_data.append({'parameter': 'sigma_a', 'value': config.core.sigma_a_skill, 'source': 'COMPUTED'})
-    effective_data.append({'parameter': 'phi', 'value': 1.0, 'source': 'DEFAULT'})
+    effective_data.append({'parameter': 'mu_e', 'value': config.core.mu_e, 'source': 'COMPUTED'})
+    effective_data.append({'parameter': 'sigma_e', 'value': config.core.sigma_e, 'source': 'COMPUTED'})
+    effective_data.append({'parameter': 'gamma', 'value': 1.0, 'source': 'DEFAULT'})
+    effective_data.append({'parameter': 'eta', 'value': config.core.eta, 'source': 'CLI' if 'eta' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'alpha', 'value': config.core.alpha, 'source': 'CLI' if 'alpha' in cli_overrides else 'DEFAULT'})
-    effective_data.append({'parameter': 'beta', 'value': config.core.beta, 'source': 'CLI' if 'beta' in cli_overrides else 'DEFAULT'})
-    effective_data.append({'parameter': 'gamma', 'value': config.core.gamma, 'source': 'CLI' if 'gamma' in cli_overrides else 'DEFAULT'})
+    effective_data.append({'parameter': 'tau', 'value': config.core.tau, 'source': 'CLI' if 'tau' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'conduct_mode', 'value': config.core.conduct_mode, 'source': 'CLI' if 'conduct_mode' in cli_overrides else 'DEFAULT'})
     effective_data.append({'parameter': 'N_workers', 'value': config.core.N_workers, 'source': 'CLI' if 'N_workers' in cli_overrides else 'DEFAULT'})
     
@@ -587,7 +587,7 @@ def generate_support_points(config: ModelConfig, out_path: str) -> Tuple[np.ndar
 # =============================================================================
 
 def main():
-    default_data_dir = get_data_dir(create=True)
+    default_data_dir = get_data_subdir(DATA_RAW, create=True)
 
     parser = argparse.ArgumentParser(description="Worker Screening Data Preparation")
     
@@ -618,17 +618,17 @@ def main():
     # Core parameters - skill distribution components
     parser.add_argument("--mu_x_skill", type=float, help="Mean of x_skill component (default: 10.009)")
     parser.add_argument("--sigma_x_skill", type=float, help="Standard deviation of x_skill component (default: 2.60)")
-    parser.add_argument("--mu_a_skill", type=float, help="Mean of a_skill component (default: 0.0)")
-    parser.add_argument("--sigma_a_skill", type=float, help="Standard deviation of a_skill component (default: 1.5)")
+    parser.add_argument("--mu_e", type=float, help="Mean of unobserved skill component (default: 0.0)")
+    parser.add_argument("--sigma_e", type=float, help="Standard deviation of unobserved skill component (default: 1.5)")
     parser.add_argument("--rho_x_skill_ell_x", type=float, help="Correlation between x_skill and worker x-location")
     parser.add_argument("--rho_x_skill_ell_y", type=float, help="Correlation between x_skill and worker y-location")
     parser.add_argument("--rho_x_skill_r", type=float, help="Correlation between x_skill and distance from worker mean location")
     # Legacy parameters (for backward compatibility, will be overridden by computed values)
-    parser.add_argument("--mu_s", type=float, help="DEPRECATED: Use --mu_x_skill and --mu_a_skill instead")
-    parser.add_argument("--sigma_s", type=float, help="DEPRECATED: Use --sigma_x_skill and --sigma_a_skill instead")
-    parser.add_argument("--alpha", type=float, help="Wage elasticity parameter")
-    parser.add_argument("--beta", type=float, help="Production function parameter")
-    parser.add_argument("--gamma", type=float, help="Distance decay parameter")
+    parser.add_argument("--mu_s", type=float, help="DEPRECATED: Use --mu_x_skill and --mu_e instead")
+    parser.add_argument("--sigma_s", type=float, help="DEPRECATED: Use --sigma_x_skill and --sigma_e instead")
+    parser.add_argument("--eta", type=float, help="Wage elasticity parameter")
+    parser.add_argument("--alpha", type=float, help="Production function parameter")
+    parser.add_argument("--tau", type=float, help="Distance decay / commuting cost parameter")
     parser.add_argument("--conduct_mode", type=int, choices=[0, 1, 2], help="0=monopsonistic (model elasticities), 1=status quo, 2=behavioral elasticities ~ N(1, 0.25)")
     parser.add_argument("--N_workers", type=float, help="Total number of workers in the market")
     
@@ -643,6 +643,10 @@ def main():
         help="Optional CSV path to specify firms manually with columns firm_id,A,xi,x,y (optional: comp, logA). Overrides random generation.",
     )
     
+    # Multi-market
+    parser.add_argument("--M", type=int, default=1,
+                        help="Number of independent markets to generate (default: 1)")
+
     # Output parameters
     parser.add_argument(
         "--out_dir",
@@ -658,9 +662,9 @@ def main():
     
     # Build CLI overrides dictionary
     cli_overrides = {}
-    for param in ['J', 'mu_x_skill', 'sigma_x_skill', 'mu_a_skill', 'sigma_a_skill',
+    for param in ['J', 'mu_x_skill', 'sigma_x_skill', 'mu_e', 'sigma_e',
                  'rho_x_skill_ell_x', 'rho_x_skill_ell_y', 'rho_x_skill_r',
-                 'mu_s', 'sigma_s', 'alpha', 'beta', 'gamma', 'conduct_mode', 'N_workers',
+                 'mu_s', 'sigma_s', 'eta', 'alpha', 'tau', 'conduct_mode', 'N_workers',
                  'worker_loc_mode', 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x', 'worker_sigma_y',
                  'worker_rho', 'worker_r_mu', 'worker_r_sigma',
                  'quad_n_x', 'quad_n_y', 'sigma_A', 'sigma_xi', 'rho_Axi', 'mu_xi']:
@@ -700,7 +704,7 @@ def main():
 
     # Print configuration summary (after applying any manual firm overrides)
     print("\n=== CONFIGURATION SUMMARY ===")
-    print(f"[CONFIG] core:  mu_s={config.core.mu_s}, sigma_s={config.core.sigma_s}, alpha={config.core.alpha}, beta={config.core.beta}, gamma={config.core.gamma}, conduct_mode={config.core.conduct_mode}, N_workers={config.core.N_workers}")
+    print(f"[CONFIG] core:  mu_s={config.core.mu_s}, sigma_s={config.core.sigma_s}, eta={config.core.eta}, alpha={config.core.alpha}, tau={config.core.tau}, conduct_mode={config.core.conduct_mode}, N_workers={config.core.N_workers}")
     print(f"[CONFIG] skill-location corr: rho_x_skill_ell_x={config.core.rho_x_skill_ell_x}, rho_x_skill_ell_y={config.core.rho_x_skill_ell_y}")
     print(
         "[CONFIG] worker: mode={}, mu=({}, {}), sigma=({}, {}), rho={}, r_mu={}, r_sigma={}".format(
@@ -722,74 +726,87 @@ def main():
         effective_table.loc[mask_J, "value"] = config.firm.J
         effective_table.loc[mask_J, "source"] = "MANUAL"
 
+    # Add M (number of markets) to effective table
+    effective_table = pd.concat([
+        effective_table,
+        pd.DataFrame([{'parameter': 'M', 'value': args.M, 'source': 'CLI' if args.M > 1 else 'DEFAULT'}]),
+    ], ignore_index=True)
+
     # Dump effective configuration (after any manual firm overrides)
     dump_effective_config_csv(effective_table, out_dir / "parameters_effective.csv")
 
-    # Generate firm data (unless manual input provided)
-    if input_firms_df is None:
-        print(f"\nGenerating {config.firm.J} firms...")
-        
-        # Build covariance matrix
+    M = args.M
+
+    def _generate_firms_df(rng_market):
+        """Generate a single market's firms DataFrame."""
         cov = build_covariance(config.firm.sigma_A, config.firm.sigma_xi, config.firm.rho_Axi)
-        
-        # Draw fundamentals
-        fundamentals_df = draw_firm_fundamentals(config.firm.J, cov, rng, mu_xi=config.firm.mu_xi)
-        
-        # Draw locations
-        locations_df = draw_firm_locations(config.firm.J, config.firm.centers, config.firm.sds, config.firm.weights, rng)
-        
-        # Merge fundamentals and locations
-        firms_df = pd.merge(fundamentals_df, locations_df, on='firm_id')
-        
-        # Add behavioral elasticities if conduct_mode=2
+        fundamentals_df = draw_firm_fundamentals(config.firm.J, cov, rng_market, mu_xi=config.firm.mu_xi)
+        locations_df = draw_firm_locations(config.firm.J, config.firm.centers, config.firm.sds, config.firm.weights, rng_market)
+        df = pd.merge(fundamentals_df, locations_df, on='firm_id')
         if config.core.conduct_mode == 2:
-            # Draw behavioral elasticities: eps_L ~ N(alpha, 1), eps_S ~ N(1, 0.25)
-            mean_eps_L = 3
-            std_eps_L = 1
-            mean_eps_S = 1
-            std_eps_S = 2
-            
-            eps_L_behavioral = rng.normal(mean_eps_L, std_eps_L, config.firm.J)
-            eps_S_behavioral = rng.normal(mean_eps_S, std_eps_S, config.firm.J)
-            
-            # Add to firms DataFrame
-            firms_df['eps_L_behavioral'] = eps_L_behavioral
-            firms_df['eps_S_behavioral'] = eps_S_behavioral
-            
-            print(f"  Behavioral elasticities drawn:")
-            print(f"    eps_L: mean={eps_L_behavioral.mean():.4f}, std={eps_L_behavioral.std():.4f}")
-            print(f"    eps_S: mean={eps_S_behavioral.mean():.4f}, std={eps_S_behavioral.std():.4f}")
+            df['eps_L_behavioral'] = rng_market.normal(3, 1, config.firm.J)
+            df['eps_S_behavioral'] = rng_market.normal(1, 2, config.firm.J)
+        return df.sort_values('firm_id').reset_index(drop=True)
+
+    # Generate firm data
+    market_dfs = []
+    if input_firms_df is not None:
+        if M > 1:
+            raise ValueError("--M > 1 is not supported with --firms_input_path. "
+                             "Remove --firms_input_path to generate multiple markets.")
+        market_dfs.append(input_firms_df.copy().sort_values('firm_id').reset_index(drop=True))
     else:
-        firms_df = input_firms_df.copy()
-    
-    # Sort by firm_id and reindex
-    firms_df = firms_df.sort_values('firm_id').reset_index(drop=True)
-    
-    # Write firms CSV
+        print(f"\nGenerating {config.firm.J} firms x {M} market(s)...")
+        for m in range(M):
+            rng_m = np.random.default_rng(args.seed + m)
+            market_dfs.append(_generate_firms_df(rng_m))
+
+    # Write per-market files if M > 1
+    if M > 1:
+        markets_dir = out_dir / "markets"
+        markets_dir.mkdir(parents=True, exist_ok=True)
+        for m, df_m in enumerate(market_dfs, start=1):
+            market_path = markets_dir / f"firms_market_{m}.csv"
+            df_m.to_csv(market_path, index=False)
+            print(f"  Market {m}: {len(df_m)} firms -> {market_path}")
+
+    # Build combined firms DataFrame (with market_id column when M > 1)
+    if M == 1:
+        firms_df = market_dfs[0]
+    else:
+        parts = []
+        for m, df_m in enumerate(market_dfs, start=1):
+            df_copy = df_m.copy()
+            df_copy.insert(0, 'market_id', m)
+            parts.append(df_copy)
+        firms_df = pd.concat(parts, ignore_index=True)
+
+    # Write combined firms CSV
     firms_path = out_dir / "firms.csv"
     firms_df.to_csv(firms_path, index=False)
     print(f"Firms data written to: {firms_path}")
-    
+
     # Print firm summary statistics
-    print(f"Firm summary:")
+    print(f"Firm summary ({M} market(s), {len(firms_df)} total firms):")
     print(f"  A: mean={firms_df['A'].mean():.4f}, std={firms_df['A'].std():.4f}")
     print(f"  xi: mean={firms_df['xi'].mean():.4f}, std={firms_df['xi'].std():.4f}")
-    print(f"  Components: {firms_df['comp'].value_counts().sort_index().to_dict()}")
     print(f"  Spatial bounds: x=[{firms_df['x'].min():.2f}, {firms_df['x'].max():.2f}], y=[{firms_df['y'].min():.2f}, {firms_df['y'].max():.2f}]")
-    
-    # Generate support points
+
+    # Generate support points (shared across markets)
     print(f"\nGenerating worker quadrature points...")
     support_path = out_dir / "support_points.csv"
     points, weights = generate_support_points(config, support_path)
     print(f"Support points written to: {support_path}")
-    
-    # Write parameters CSV
+
+    # Write parameters CSV (shared across markets, includes M)
     params_path = out_dir / "parameters.csv"
     write_parameters_template(params_path)
     print(f"Parameters template written to: {params_path}")
-    
+
     print(f"\n=== OUTPUT FILES ===")
     print(f"  {firms_path}")
+    if M > 1:
+        print(f"  {out_dir / 'markets/'} ({M} per-market firm files)")
     print(f"  {support_path}")
     print(f"  {params_path}")
     print(f"  {out_dir / 'parameters_effective.csv'}")

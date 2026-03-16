@@ -23,17 +23,20 @@ if __package__ is None or __package__ == "":
 
     project_root = Path(__file__).resolve().parents[2]
     sys.path.append(str(project_root))
-    from code import get_data_dir  # type: ignore
+    from code import get_data_subdir, get_output_subdir, DATA_RAW, DATA_CLEAN, DATA_BUILD, OUTPUT_WORKERS  # type: ignore
     from code.estimation.helpers import (  # type: ignore
         compute_order_maps,
         read_params_long_csv,
     )
 else:  # pragma: no cover - executed when running as package module
-    from .. import get_data_dir
+    from .. import get_data_subdir, get_output_subdir, DATA_RAW, DATA_CLEAN, DATA_BUILD, OUTPUT_WORKERS
     from ..estimation.helpers import compute_order_maps, read_params_long_csv
 
 
-DEFAULT_DATA_DIR = get_data_dir()
+DEFAULT_RAW_DIR = get_data_subdir(DATA_RAW)
+DEFAULT_CLEAN_DIR = get_data_subdir(DATA_CLEAN)
+DEFAULT_BUILD_DIR = get_data_subdir(DATA_BUILD)
+DEFAULT_PLOT_DIR = get_output_subdir(OUTPUT_WORKERS)
 
 
 # =============================================================================
@@ -61,7 +64,7 @@ def simulate_worker_choice_probabilities(
     params: Dict[str, Any],
     n_simulations: int = 10000,
     seed: int = 123,
-    out_dir: Path | str = DEFAULT_DATA_DIR,
+    out_dir: Path | str = DEFAULT_BUILD_DIR,
 ) -> Dict[str, Any]:
     """
     Simulate choice probabilities for a single worker using Type 1 extreme value shocks.
@@ -79,7 +82,7 @@ def simulate_worker_choice_probabilities(
     
     # Extract firm data
     w = firms_data['w']
-    c = firms_data['c']
+    qbar = firms_data['qbar']
     xi = firms_data['xi']
     A = firms_data['A']
     loc_firms = firms_data['loc_firms']
@@ -87,18 +90,18 @@ def simulate_worker_choice_probabilities(
     J = len(w)
     
     # Extract parameters
+    eta = float(params['eta'])
     alpha = float(params['alpha'])
-    beta = float(params['beta'])
-    gamma = float(params.get('gamma', 0.1))
-    sigma_a = float(params.get('sigma_a', 1.5))
-    
+    tau = float(params.get('tau', 0.1))
+    sigma_e = float(params.get('sigma_e', 1.5))
+
     print(f"Worker characteristics:")
     print(f"  x_skill: {x_skill:.6f}")
     print(f"  location: ({ell_x:.6f}, {ell_y:.6f})")
     print(f"Parameters:")
-    print(f"  alpha: {alpha}")
-    print(f"  gamma: {gamma}")
-    print(f"  sigma_a: {sigma_a}")
+    print(f"  eta: {eta}")
+    print(f"  tau: {tau}")
+    print(f"  sigma_e: {sigma_e}")
     
     # SIMULATION using Type 1 extreme value shocks
     rng = np.random.default_rng(seed)
@@ -106,13 +109,13 @@ def simulate_worker_choice_probabilities(
     # Distances to firms
     distances = np.sqrt((ell_x - loc_firms[:, 0])**2 + (ell_y - loc_firms[:, 1])**2)
     
-    # Systematic utilities: U_ij = alpha * log(w_j) + xi_j - gamma * distance_ij
-    U_systematic = alpha * np.log(w) + xi - gamma * distances  # (J,)
+    # Systematic utilities: U_ij = eta * log(w_j) + xi_j - tau * distance_ij
+    U_systematic = eta * np.log(w) + xi - tau * distances  # (J,)
     U_outside_systematic = 0.0  # Outside option normalized to 0
     
     print(f"\nFirm data:")
     for j in range(J):
-        print(f"  Firm {firm_ids[j]}: w={w[j]:.6f}, c={c[j]:.6f}, xi={xi[j]:.6f}, distance={distances[j]:.6f}, U_sys={U_systematic[j]:.6f}")
+        print(f"  Firm {firm_ids[j]}: w={w[j]:.6f}, qbar={qbar[j]:.6f}, xi={xi[j]:.6f}, distance={distances[j]:.6f}, U_sys={U_systematic[j]:.6f}")
     
     print(f"\nRunning {n_simulations} simulations, saving to CSV...")
     
@@ -122,11 +125,11 @@ def simulate_worker_choice_probabilities(
     
     for sim in range(n_simulations):
         # Draw a_skill for this simulation
-        a_skill_sim = rng.normal(0, sigma_a)  # a_skill ~ N(0, σ_a²)
+        a_skill_sim = rng.normal(0, sigma_e)  # a_skill ~ N(0, σ_e²)
         s_skill_sim = x_skill + a_skill_sim   # Total skill for this simulation
         
         # Check which firms are feasible for this skill draw
-        feasible_firms_sim = s_skill_sim > c  # (J,) boolean array
+        feasible_firms_sim = s_skill_sim > qbar  # (J,) boolean array
         
         # Draw Type 1 extreme value errors for all choices
         eps_outside = rng.gumbel(0, 1)  # Outside option error
@@ -203,10 +206,10 @@ def simulate_worker_choice_probabilities(
         'worker_characteristics': {
             'x_skill': float(x_skill),
             'location': [float(ell_x), float(ell_y)],
-            'sigma_a': float(sigma_a)
+            'sigma_e': float(sigma_e)
         },
         'simulation_setup': {
-            'c_firms': c.tolist(),
+            'qbar_firms': qbar.tolist(),
             'systematic_utilities': U_systematic.tolist(),
             'distances': distances.tolist(),
             'n_simulations': int(n_simulations)
@@ -259,8 +262,8 @@ def construct_worker_dataset(
     # New skill distribution component parameters
     mu_x_skill = float(params.get('mu_x_skill', params.get('mu_s', 10.009)))  # Fallback for backward compatibility
     sigma_x_skill = float(params.get('sigma_x_skill', 2.6))
-    mu_a_skill = float(params.get('mu_a_skill', 0.0))
-    sigma_a_skill = float(params.get('sigma_a_skill', 1.5))
+    mu_e = float(params.get('mu_e', 0.0))
+    sigma_e = float(params.get('sigma_e', 1.5))
     rho_x_skill_ell_x = float(params.get('rho_x_skill_ell_x', 0.0))
     rho_x_skill_ell_y = float(params.get('rho_x_skill_ell_y', 0.0))
     rho_x_skill_r = float(params.get('rho_x_skill_r', 0.0))
@@ -269,15 +272,15 @@ def construct_worker_dataset(
         raise ValueError(f"worker_loc_mode must be cartesian or polar; got {worker_loc_mode}.")
     
     # Derived parameters (for validation)
-    mu_s_computed = mu_x_skill + mu_a_skill
-    sigma_s_computed = np.sqrt(sigma_x_skill**2 + sigma_a_skill**2)
+    mu_s_computed = mu_x_skill + mu_e
+    sigma_s_computed = np.sqrt(sigma_x_skill**2 + sigma_e**2)
     
     # Set up random number generator
     rng = np.random.default_rng(seed)
     
     print(f"Drawing {N_workers} workers from continuous distributions...")
     print(f"  x_skill ~ N({mu_x_skill:.3f}, {sigma_x_skill:.3f}²)")
-    print(f"  a_skill ~ N({mu_a_skill:.1f}, {sigma_a_skill:.3f}²)")
+    print(f"  a_skill ~ N({mu_e:.1f}, {sigma_e:.3f}²)")
     print(f"  s_skill = x_skill + a_skill  =>  s_skill ~ N({mu_s_computed:.3f}, {sigma_s_computed:.3f}²)")
     if worker_loc_mode == "polar":
         print(
@@ -371,8 +374,8 @@ def construct_worker_dataset(
         x_skill = rng.normal(mu_x_skill, sigma_x_skill, N_workers)
         ell_x, ell_y = _draw_locations()
     
-    # 3) Draw a_skill from N(mu_a_skill, sigma_a_skill²)
-    a_skill = rng.normal(mu_a_skill, sigma_a_skill, N_workers)
+    # 3) Draw a_skill from N(mu_e, sigma_e²)
+    a_skill = rng.normal(mu_e, sigma_e, N_workers)
     
     # 4) Compute total skill s_i = x_i + a_i
     s_skill = x_skill + a_skill
@@ -389,11 +392,11 @@ def construct_worker_dataset(
     
     # 5) Compute utilities and firm choice if firm data is provided
     if firms_data is not None:
-        alpha = float(params.get('alpha', 5.0))
-        gamma = float(params.get('gamma', 0.05))
-        
+        eta = float(params.get('eta', 5.0))
+        tau = float(params.get('tau', 0.05))
+
         w_firms = firms_data['w']  # wages
-        c_firms = firms_data['c']  # cutoffs  
+        qbar_firms = firms_data['qbar']  # cutoffs
         xi_firms = firms_data['xi']  # firm fixed effects
         loc_firms = firms_data['locations']  # firm locations (J x 2)
         J = len(w_firms)
@@ -402,7 +405,7 @@ def construct_worker_dataset(
         
         # Draw Type I extreme value errors for all worker-firm pairs
         # u_i0 = e_i0 (outside option, only error term)
-        # u_ij = alpha * log(w_j) + xi_j - gamma * ||ell_i - ell_j|| + e_ij
+        # u_ij = eta * log(w_j) + xi_j - tau * ||ell_i - ell_j|| + e_ij
         
         # Draw extreme value errors (Gumbel distribution with location=0, scale=1)
         # For each worker: one error for outside option + J errors for firms
@@ -414,7 +417,7 @@ def construct_worker_dataset(
         # Outside option utility: u_i0 = e_i0
         utilities[:, 0] = errors[:, 0]
         
-        # Firm utilities: u_ij = alpha * log(w_j) + xi_j - gamma * ||ell_i - ell_j|| + e_ij
+        # Firm utilities: u_ij = eta * log(w_j) + xi_j - tau * ||ell_i - ell_j|| + e_ij
         for j in range(J):
             # Distance between worker i and firm j
             worker_locations = np.column_stack([ell_x, ell_y])  # (N_workers, 2)
@@ -426,7 +429,7 @@ def construct_worker_dataset(
             xi_j = xi_firms[j]
             
             # Total utility for firm j
-            utilities[:, j + 1] = alpha * log_wage + xi_j - gamma * distances + errors[:, j + 1]
+            utilities[:, j + 1] = eta * log_wage + xi_j - tau * distances + errors[:, j + 1]
         
         # Add utility columns to dataframe
         utility_cols = {}
@@ -442,7 +445,7 @@ def construct_worker_dataset(
         for i in range(N_workers):
             s_i = s_skill[i]
             
-            # Find feasible firms where s_i > c_j
+            # Find feasible firms where s_i > qbar_j
             feasible_firms = []
             feasible_utilities = []
             3
@@ -452,7 +455,7 @@ def construct_worker_dataset(
             
             # Check firms where skill constraint is satisfied
             for j in range(J):
-                if s_i > c_firms[j]:
+                if s_i > qbar_firms[j]:
                     feasible_firms.append(j + 1)  # Firm indices 1, 2, ..., J
                     feasible_utilities.append(utilities[i, j + 1])
             
@@ -471,8 +474,8 @@ def construct_worker_dataset(
     print(f"\n=== VALIDATION CHECKS ===")
     print(f"N_workers: {N_workers}")
     print(f"μ_s: {mu_s_computed:.3f}, σ_s: {sigma_s_computed:.3f}")
-    print(f"σ_x: {sigma_x_skill:.3f}, σ_a_skill: {sigma_a_skill:.3f}")
-    print(f"μ_a_skill: {mu_a_skill:.3f}")
+    print(f"σ_x: {sigma_x_skill:.3f}, σ_e: {sigma_e:.3f}")
+    print(f"μ_e: {mu_e:.3f}")
     print(
         "Location params: mode={}, mu=({:.1f}, {:.1f}), sigma=({:.1f}, {:.1f}), rho={:.1f}, r_mu={:.1f}, r_sigma={:.1f}".format(
             worker_loc_mode,
@@ -532,8 +535,8 @@ def construct_worker_dataset(
         'sigma_s': sigma_s_computed,
         'mu_x_skill': mu_x_skill,
         'sigma_x_skill': sigma_x_skill,
-        'mu_a_skill': mu_a_skill,
-        'sigma_a_skill': sigma_a_skill,
+        'mu_e': mu_e,
+        'sigma_e': sigma_e,
         'worker_mu_x': worker_mu_x,
         'worker_mu_y': worker_mu_y,
         'worker_sigma_x': worker_sigma_x,
@@ -571,8 +574,8 @@ def compute_choices_no_cutoff(
     Compute worker firm choices when all firms accept all workers (no cutoffs).
     Returns array of chosen firm_ids (natural IDs); 0 denotes outside option.
     """
-    alpha = float(params.get("alpha", 5.0))
-    gamma = float(params.get("gamma", 0.05))
+    eta = float(params.get("eta", 5.0))
+    tau = float(params.get("tau", 0.05))
     wages_col = "w_noscreening" if "w_noscreening" in firms_df.columns else "w"
 
     wages = np.asarray(firms_df[wages_col].to_numpy(), dtype=float)
@@ -593,9 +596,9 @@ def compute_choices_no_cutoff(
     for j in range(J):
         distances = np.linalg.norm(worker_locations - loc_firms[j], axis=1)
         utilities[:, j + 1] = (
-            alpha * np.log(np.maximum(wages[j], 1e-300))
+            eta * np.log(np.maximum(wages[j], 1e-300))
             + xi_vals[j]
-            - gamma * distances
+            - tau * distances
             + errors[:, j + 1]
         )
 
@@ -605,39 +608,276 @@ def compute_choices_no_cutoff(
 
 
 # =============================================================================
+# Multi-market worker draws
+# =============================================================================
+
+
+def _read_firms_data_from_csv(firms_path: Path):
+    """Read firms CSV and return (firms_data dict, firms_df) or (None, None)."""
+    if not firms_path.exists():
+        return None, None
+    try:
+        df = pd.read_csv(firms_path)
+        J = len(df)
+        firm_ids = df['firm_id'].values if 'firm_id' in df.columns else np.arange(1, J + 1)
+        data = {
+            'w': df['w'].values,
+            'qbar': df['qbar'].values,
+            'xi': df['xi'].values,
+            'locations': df[['x', 'y']].values,
+            'firm_ids': firm_ids,
+        }
+        return data, df
+    except Exception as e:
+        print(f"Warning: Could not read firms data from {firms_path}: {e}")
+        return None, None
+
+
+def _drop_and_reassign_firms(worker_df: pd.DataFrame, firms_df: pd.DataFrame,
+                             drop_below_n: int) -> tuple:
+    """Iteratively drop firms with fewer than drop_below_n workers and reassign.
+
+    Workers whose chosen firm is dropped are reassigned to their next best
+    feasible choice (highest utility among remaining feasible firms).  The
+    process repeats until no more firms fall below the threshold.
+
+    Args:
+        worker_df: Worker dataset with columns u_i0..u_iJ, s_skill, chosen_firm.
+        firms_df: Firms DataFrame with 'qbar' column (J rows).
+        drop_below_n: Minimum number of matched workers a firm must have to survive.
+
+    Returns:
+        (worker_df, firms_df) -- modified copies with reindexed firm IDs.
+        firms_df is filtered to surviving firms with consecutive firm_id 1..J'.
+        worker_df has chosen_firm updated and a chosen_firm_original_id column.
+    """
+    J = len(firms_df)
+    qbar_all = firms_df['qbar'].values
+    s_skill = worker_df['s_skill'].values
+
+    # Build utility matrix from stored columns (N x J+1)
+    util_cols = [worker_df['u_i0'].values]
+    for j in range(J):
+        col_name = f'u_i{j + 1}'
+        util_cols.append(worker_df[col_name].values)
+    util_matrix = np.column_stack(util_cols)
+
+    current_chosen = worker_df['chosen_firm'].values.copy()
+    dropped_firms: set = set()
+
+    iteration = 0
+    while True:
+        iteration += 1
+        # Count workers per firm (excluding outside option and dropped firms)
+        firm_counts = np.bincount(
+            current_chosen[current_chosen > 0], minlength=J + 1
+        )[1:]  # index 0..J-1 correspond to firm_id 1..J
+
+        # Find firms below threshold that have not already been dropped
+        newly_dropped: set = set()
+        for j in range(J):
+            firm_id = j + 1
+            if firm_id not in dropped_firms and firm_counts[j] < drop_below_n:
+                newly_dropped.add(firm_id)
+
+        if not newly_dropped:
+            break  # stable
+
+        dropped_firms.update(newly_dropped)
+        print(f"  Drop iteration {iteration}: dropping {len(newly_dropped)} firms "
+              f"(total dropped: {len(dropped_firms)})")
+
+        # Reassign workers from newly dropped firms
+        affected_idx = np.where(np.isin(current_chosen, list(newly_dropped)))[0]
+        for i in affected_idx:
+            s_i = s_skill[i]
+            best_firm = 0  # default to outside option
+            best_util = util_matrix[i, 0]
+            for j in range(J):
+                firm_id = j + 1
+                if firm_id in dropped_firms:
+                    continue
+                if s_i > qbar_all[j] and util_matrix[i, j + 1] > best_util:
+                    best_firm = firm_id
+                    best_util = util_matrix[i, j + 1]
+            current_chosen[i] = best_firm
+
+    worker_df = worker_df.copy()
+    worker_df['chosen_firm'] = current_chosen
+    print(f"  Final: {len(dropped_firms)} firms dropped, "
+          f"{J - len(dropped_firms)} firms remaining")
+
+    # --- Reindex surviving firms to consecutive IDs ---
+    chosen_positions = np.sort(
+        worker_df.loc[worker_df['chosen_firm'] > 0, 'chosen_firm']
+        .astype(int)
+        .unique()
+    )
+    if chosen_positions.size > 0:
+        chosen_idx = chosen_positions - 1  # 1-based -> 0-based
+        firm_subset = firms_df.iloc[chosen_idx].copy()
+
+        if 'firm_id' in firm_subset.columns:
+            firm_subset['original_firm_id'] = firm_subset['firm_id']
+        else:
+            firm_subset['original_firm_id'] = chosen_positions
+
+        new_ids = np.arange(1, chosen_positions.size + 1, dtype=int)
+        mapping = {int(old): int(new) for old, new in zip(chosen_positions, new_ids)}
+
+        worker_df['chosen_firm_original_id'] = worker_df['chosen_firm']
+        worker_df['chosen_firm'] = (
+            worker_df['chosen_firm']
+            .apply(lambda x: mapping.get(int(x), 0))
+            .astype(int)
+        )
+
+        firm_subset['firm_id'] = new_ids
+        firm_subset.reset_index(drop=True, inplace=True)
+        firms_df = firm_subset
+    else:
+        worker_df['chosen_firm_original_id'] = worker_df['chosen_firm']
+        firms_df = firms_df.iloc[0:0].copy()  # empty
+
+    return worker_df, firms_df
+
+
+def _draw_workers_multi_market(args, M, params, raw_dir, clean_dir, build_dir, out_dir, plot_out) -> int:
+    """Draw workers for each of M markets and combine."""
+    markets_clean = clean_dir / "markets"
+    markets_build = out_dir / "markets"
+    markets_build.mkdir(parents=True, exist_ok=True)
+
+    print(f"\nMulti-market worker draws: M={M}")
+    drop_below_n = getattr(args, 'drop_below_n', None)
+    use_drop = drop_below_n is not None and drop_below_n > 0
+
+    # --- Pass 1: draw workers and drop firms per market ---
+    market_results = []  # list of (m, worker_df, firms_df)
+
+    for m in range(1, M + 1):
+        eq_path = markets_clean / f"equilibrium_firms_market_{m}.csv"
+        firms_data, firms_df = _read_firms_data_from_csv(eq_path)
+        if firms_data is None:
+            print(f"  Market {m}: equilibrium file not found at {eq_path}, skipping.")
+            continue
+
+        print(f"  Market {m}: {len(firms_df)} firms, drawing workers (seed={args.seed + m - 1})...")
+        worker_df = construct_worker_dataset(params, firms_data=firms_data, seed=args.seed + m - 1)
+
+        if use_drop and 'chosen_firm' in worker_df.columns:
+            print(f"    Applying --drop_below_n={drop_below_n} for market {m}...")
+            worker_df, firms_df = _drop_and_reassign_firms(worker_df, firms_df, drop_below_n)
+
+        market_results.append((m, worker_df, firms_df))
+
+    if not market_results:
+        print("ERROR: No markets produced worker data.")
+        return 1
+
+    # --- Pass 2: save per-market files and build combined dataset ---
+    all_worker_dfs = []
+    all_firm_dfs = []
+
+    for m, worker_df, firms_df in market_results:
+        market_path = markets_build / f"workers_dataset_market_{m}.csv"
+        worker_df.to_csv(market_path, index=False)
+
+        if use_drop:
+            firm_market_path = markets_build / f"firm_data_market_{m}.csv"
+            firms_df.to_csv(firm_market_path, index=False)
+
+        worker_df_tagged = worker_df.copy()
+        worker_df_tagged.insert(0, 'market_id', m)
+        all_worker_dfs.append(worker_df_tagged)
+
+        firms_tagged = firms_df.copy()
+        firms_tagged.insert(0, 'market_id', m)
+        all_firm_dfs.append(firms_tagged)
+
+        # No-screening variant
+        noscreen_path = markets_clean / f"equilibrium_firms_noscreening_market_{m}.csv"
+        if noscreen_path.exists():
+            try:
+                noscreen_df = pd.read_csv(noscreen_path)
+                if "firm_id" not in noscreen_df.columns:
+                    noscreen_df["firm_id"] = np.arange(1, len(noscreen_df) + 1, dtype=int)
+                chosen_ids = compute_choices_no_cutoff(worker_df, noscreen_df, params, seed=args.seed + m)
+                worker_noscreen = worker_df_tagged.copy()
+                worker_noscreen["chosen_firm"] = chosen_ids
+                noscreen_market_path = markets_build / f"workers_dataset_noscreening_market_{m}.csv"
+                worker_noscreen.to_csv(noscreen_market_path, index=False)
+            except Exception as exc:
+                print(f"    Warning: no-screening worker draw failed for market {m}: {exc}")
+
+        print(f"    -> {market_path} ({len(worker_df)} workers, {len(firms_df)} firms)")
+
+    # Combined worker dataset
+    combined = pd.concat(all_worker_dfs, ignore_index=True)
+    combined_path = out_dir / "workers_dataset.csv"
+    combined.to_csv(combined_path, index=False)
+    print(f"\nCombined worker dataset ({len(combined)} workers) written to: {combined_path}")
+
+    # Combined firm dataset (for estimation code that reads a single firms CSV)
+    if all_firm_dfs:
+        combined_firms = pd.concat(all_firm_dfs, ignore_index=True)
+        firms_combined_path = clean_dir / "equilibrium_firms.csv"
+        combined_firms.to_csv(firms_combined_path, index=False)
+        j_counts = [len(fdf) for fdf in all_firm_dfs]
+        j_min, j_max = min(j_counts), max(j_counts)
+        j_str = str(j_min) if j_min == j_max else f"{j_min}-{j_max}"
+        print(f"Combined firm dataset ({len(combined_firms)} firms, J_per={j_str}) "
+              f"written to: {firms_combined_path}")
+
+    print(f"\n=== OUTPUT FILES ===")
+    print(f"  {combined_path}")
+    print(f"  {markets_build}/ ({M} per-market worker files)")
+    return 0
+
+
+# =============================================================================
 # MAIN FUNCTION
 # =============================================================================
 
 def main() -> int:
     """Main function."""
     parser = argparse.ArgumentParser(description="Construct worker dataset with continuous sampling")
-    data_dir = get_data_dir(create=True)
-    
+    raw_dir = get_data_subdir(DATA_RAW, create=True)
+    clean_dir = get_data_subdir(DATA_CLEAN, create=True)
+    build_dir = get_data_subdir(DATA_BUILD, create=True)
+    plot_dir = get_output_subdir(OUTPUT_WORKERS, create=True)
+
     # File paths
     parser.add_argument(
         "--params_path",
         type=str,
-        default=str(data_dir / "parameters_effective.csv"),
+        default=str(raw_dir / "parameters_effective.csv"),
         help="Path to parameters CSV file",
     )
     parser.add_argument(
         "--firms_path",
         type=str,
-        default=str(data_dir / "equilibrium_firms.csv"),
+        default=str(clean_dir / "equilibrium_firms.csv"),
         help="Path to equilibrium firms CSV file (for reference only)",
     )
     parser.add_argument(
         "--firms_noscreening_path",
         type=str,
-        default=str(data_dir / "equilibrium_firms_noscreening.csv"),
+        default=str(clean_dir / "equilibrium_firms_noscreening.csv"),
         help="Optional path to no-screening equilibrium firms CSV (for worker_noscreening dataset).",
     )
 
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=str(data_dir),
-        help="Output directory for worker data (defaults to project data/ folder)",
+        default=str(build_dir),
+        help="Output directory for worker data (defaults to data/build/)",
+    )
+    parser.add_argument(
+        "--plot_dir",
+        type=str,
+        default=str(plot_dir),
+        help="Output directory for plots (defaults to output/workers/)",
     )
     
     # Sampling parameters
@@ -647,41 +887,56 @@ def main() -> int:
                        help="Run probability computation validation (default: False)")
     parser.add_argument("--debug_worker_idx", type=int, default=None,
                        help="Worker index for detailed probability debugging (default: None)")
-    
 
-    
+    # Multi-market
+    parser.add_argument("--M", type=int, default=1,
+                       help="Number of markets. When > 1, draws workers per market from "
+                            "data/clean/markets/equilibrium_firms_market_{m}.csv.")
+    parser.add_argument("--drop_below_n", type=int, default=None,
+                       help="Drop firms with fewer than this many matched workers. "
+                            "Workers assigned to dropped firms are reassigned to their next best feasible choice.")
+
     args = parser.parse_args()
-    
+    M = args.M
+
     print("Worker Dataset Construction")
     print("=" * 50)
-    
+
     params_path = Path(args.params_path)
-    firms_path = Path(args.firms_path)
-    firms_noscreen_path = Path(args.firms_noscreening_path)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+    plot_out = Path(args.plot_dir)
+    plot_out.mkdir(parents=True, exist_ok=True)
+
     # Check file existence
     if not params_path.exists():
-        print(f"Warning: {params_path} not found, trying data/parameters.csv")
-        fallback_path = data_dir / "parameters.csv"
+        print(f"Warning: {params_path} not found, trying data/raw/parameters.csv")
+        fallback_path = raw_dir / "parameters.csv"
         if not fallback_path.exists():
             print(f"Error: Neither {params_path} nor {fallback_path} found")
             return 1
         params_path = fallback_path
-    
+
+    # Read parameters (shared across markets)
+    params = read_params_long_csv(str(params_path))
+    print(f"Loaded parameters: mu_s={params.get('mu_s', 'N/A')}, N_workers={params.get('N_workers', 'N/A')}")
+
+    # --- Multi-market mode ---
+    if M > 1:
+        return _draw_workers_multi_market(args, M, params, raw_dir, clean_dir, build_dir, out_dir, plot_out)
+
+    # --- Single-market mode ---
+    firms_path = Path(args.firms_path)
+    firms_noscreen_path = Path(args.firms_noscreening_path)
+
     if not firms_path.exists():
         print(f"Warning: {firms_path} not found")
     if not firms_noscreen_path.exists():
         print(f"Note: no-screening firms file {firms_noscreen_path} not found; skipping worker noscreening dataset.")
-    
+
     # Read data
     print("Reading data...")
-    
-    # Read parameters
-    params = read_params_long_csv(str(params_path))
-    print(f"Loaded parameters: mu_s={params.get('mu_s', 'N/A')}, N_workers={params.get('N_workers', 'N/A')}")
-    
+
     # Read equilibrium firms (for utility computation)
     firms_data = None
     firms_df: pd.DataFrame | None = None
@@ -695,7 +950,7 @@ def main() -> int:
                 firm_ids = np.arange(1, J + 1)
             firms_data = {
                 'w': firms_df['w'].values,
-                'c': firms_df['c'].values,
+                'qbar': firms_df['qbar'].values,
                 'xi': firms_df['xi'].values,
                 'locations': firms_df[['x', 'y']].values,
                 'firm_ids': firm_ids,
@@ -722,49 +977,75 @@ def main() -> int:
         and firms_df is not None
         and 'chosen_firm' in worker_dataset.columns
     ):
-        chosen_positions = np.sort(
-            worker_dataset.loc[worker_dataset['chosen_firm'] > 0, 'chosen_firm']
-            .astype(int)
-            .unique()
-        )
-        if chosen_positions.size > 0:
-            chosen_idx = chosen_positions - 1  # convert 1-based to 0-based index
-            firm_subset = firms_df.iloc[chosen_idx].copy()
+        drop_below_n = getattr(args, 'drop_below_n', None)
 
-            # Preserve original identifiers before reindexing
-            if 'firm_id' in firm_subset.columns:
-                firm_subset['original_firm_id'] = firm_subset['firm_id']
-            else:
-                firm_subset['original_firm_id'] = chosen_positions
-
-            new_ids = np.arange(1, chosen_positions.size + 1, dtype=int)
-            mapping = {old: new for old, new in zip(chosen_positions, new_ids)}
-
-            # Reindex chosen firm identifiers in worker data (keep outside option = 0)
-            worker_dataset['chosen_firm_original_id'] = worker_dataset['chosen_firm']
-            worker_dataset['chosen_firm'] = (
-                worker_dataset['chosen_firm']
-                .apply(lambda x: mapping.get(int(x), 0))
-                .astype(int)
+        # Iterative firm dropping with worker reassignment
+        if drop_below_n is not None and drop_below_n > 0:
+            print(f"Applying --drop_below_n={drop_below_n} ...")
+            worker_dataset, firm_subset = _drop_and_reassign_firms(
+                worker_dataset, firms_df, drop_below_n
             )
 
-            # Update firm identifiers and write filtered firm data
-            firm_subset['firm_id'] = new_ids
-            firm_subset.reset_index(drop=True, inplace=True)
-            firm_output_path = out_dir / "firm_data.csv"
-            firm_subset.to_csv(firm_output_path, index=False)
-            print(f"Filtered firm data written to: {firm_output_path}")
+            if len(firm_subset) > 0:
+                firm_output_path = out_dir / "firm_data.csv"
+                firm_subset.to_csv(firm_output_path, index=False)
+                print(f"Filtered firm data written to: {firm_output_path}")
 
-            # Refresh firms_data dictionary to reflect filtered/reindexed firms
-            firms_data = {
-                'w': firm_subset['w'].to_numpy(),
-                'c': firm_subset['c'].to_numpy(),
-                'xi': firm_subset['xi'].to_numpy(),
-                'locations': firm_subset[['x', 'y']].to_numpy(),
-                'firm_ids': new_ids,
-            }
+                new_ids = firm_subset['firm_id'].values
+                firms_data = {
+                    'w': firm_subset['w'].to_numpy(),
+                    'qbar': firm_subset['qbar'].to_numpy(),
+                    'xi': firm_subset['xi'].to_numpy(),
+                    'locations': firm_subset[['x', 'y']].to_numpy(),
+                    'firm_ids': new_ids,
+                }
+            else:
+                print("No firms survived the drop threshold; skipping firm_data.csv creation.")
         else:
-            print("No firms were chosen by workers; skipping firm_data.csv creation.")
+            # Original behavior: drop firms with zero workers, reindex
+            chosen_positions = np.sort(
+                worker_dataset.loc[worker_dataset['chosen_firm'] > 0, 'chosen_firm']
+                .astype(int)
+                .unique()
+            )
+            if chosen_positions.size > 0:
+                chosen_idx = chosen_positions - 1  # convert 1-based to 0-based index
+                firm_subset = firms_df.iloc[chosen_idx].copy()
+
+                # Preserve original identifiers before reindexing
+                if 'firm_id' in firm_subset.columns:
+                    firm_subset['original_firm_id'] = firm_subset['firm_id']
+                else:
+                    firm_subset['original_firm_id'] = chosen_positions
+
+                new_ids = np.arange(1, chosen_positions.size + 1, dtype=int)
+                mapping = {old: new for old, new in zip(chosen_positions, new_ids)}
+
+                # Reindex chosen firm identifiers in worker data (keep outside option = 0)
+                worker_dataset['chosen_firm_original_id'] = worker_dataset['chosen_firm']
+                worker_dataset['chosen_firm'] = (
+                    worker_dataset['chosen_firm']
+                    .apply(lambda x: mapping.get(int(x), 0))
+                    .astype(int)
+                )
+
+                # Update firm identifiers and write filtered firm data
+                firm_subset['firm_id'] = new_ids
+                firm_subset.reset_index(drop=True, inplace=True)
+                firm_output_path = out_dir / "firm_data.csv"
+                firm_subset.to_csv(firm_output_path, index=False)
+                print(f"Filtered firm data written to: {firm_output_path}")
+
+                # Refresh firms_data dictionary to reflect filtered/reindexed firms
+                firms_data = {
+                    'w': firm_subset['w'].to_numpy(),
+                    'qbar': firm_subset['qbar'].to_numpy(),
+                    'xi': firm_subset['xi'].to_numpy(),
+                    'locations': firm_subset[['x', 'y']].to_numpy(),
+                    'firm_ids': new_ids,
+                }
+            else:
+                print("No firms were chosen by workers; skipping firm_data.csv creation.")
 
     if firms_data is not None:
         worker_locations = worker_dataset[['ell_x', 'ell_y']].to_numpy()
@@ -811,7 +1092,7 @@ def main() -> int:
         cbar = fig.colorbar(worker_scatter, ax=ax, pad=0.02)
         cbar.set_label('Worker skill')
 
-        plot_path = out_dir / 'workers_firms_locations.png'
+        plot_path = plot_out / 'workers_firms_locations.png'
         fig.tight_layout()
         fig.savefig(plot_path, dpi=200)
         plt.close(fig)
@@ -893,19 +1174,19 @@ def main() -> int:
                 ax.legend(loc='best')
             ax.set_aspect('equal', adjustable='box')
 
-            plot_path = out_dir / 'workers_firms_locations_by_choice.png'
+            plot_path = plot_out / 'workers_firms_locations_by_choice.png'
             fig.tight_layout()
             fig.savefig(plot_path, dpi=200)
             plt.close(fig)
             print(f"Choice-colored location scatter saved to: {plot_path}")
 
-        gamma_val = float(params.get('gamma', 0.05))
-        alpha_val = float(params.get('alpha', 5.0))
+        tau_val = float(params.get('tau', 0.05))
+        eta_val = float(params.get('eta', 5.0))
         wages = np.asarray(firms_data['w'], dtype=float)
         xi_vals = np.asarray(firms_data['xi'], dtype=float)
         firm_ids = firms_data.get('firm_ids', np.arange(1, wages.size + 1))
 
-        inclusive_vals = alpha_val * np.log(np.maximum(wages, 1e-300)) + xi_vals
+        inclusive_vals = eta_val * np.log(np.maximum(wages, 1e-300)) + xi_vals
 
         deltas = worker_locations[:, None, :] - firm_locations[None, :, :]
         distances = np.linalg.norm(deltas, axis=2)
@@ -917,13 +1198,13 @@ def main() -> int:
             'V_inclusive_value': inclusive_vals,
             'avg_distance': avg_distance,
             'sd_distance': sd_distance,
-            'gamma': gamma_val,
+            'tau': tau_val,
         })
 
         table_path = out_dir / 'firm_distance_summary.csv'
         distance_table.to_csv(table_path, index=False)
         print(f"Firm distance summary written to: {table_path}")
-        print(f"  gamma = {gamma_val:.4f}")
+        print(f"  tau = {tau_val:.4f}")
     
     # Run simulation-based probability validation if requested
     if args.validate_probabilities and firms_data is not None and args.debug_worker_idx is not None:
@@ -931,7 +1212,7 @@ def main() -> int:
         firms_df = pd.read_csv(firms_path)
         firms_validation_data = {
             'w': firms_df['w'].values,
-            'c': firms_df['c'].values,
+            'qbar': firms_df['qbar'].values,
             'xi': firms_df['xi'].values,
             'A': firms_df['A'].values if 'A' in firms_df.columns else np.ones(len(firms_df)),
             'loc_firms': firms_df[['x', 'y']].values,
@@ -1009,7 +1290,7 @@ def main() -> int:
     summary = worker_dataset.attrs['summary']
     summary_data = {
         'parameter': [
-            'N_workers', 'mu_x_skill', 'sigma_x_skill', 'mu_a_skill', 'sigma_a_skill', 
+            'N_workers', 'mu_x_skill', 'sigma_x_skill', 'mu_e', 'sigma_e',
             'mu_s', 'sigma_s', 'worker_loc_mode', 'worker_mu_x', 'worker_mu_y', 'worker_sigma_x',
             'worker_sigma_y', 'worker_rho', 'worker_r_mu', 'worker_r_sigma',
             'rho_x_skill_ell_x', 'rho_x_skill_ell_y', 'rho_x_skill_r',
@@ -1020,7 +1301,7 @@ def main() -> int:
         ],
         'value': [
             summary['N_workers'], summary['mu_x_skill'], summary['sigma_x_skill'],
-            summary['mu_a_skill'], summary['sigma_a_skill'], summary['mu_s'], summary['sigma_s'],
+            summary['mu_e'], summary['sigma_e'], summary['mu_s'], summary['sigma_s'],
             summary['worker_loc_mode'], summary['worker_mu_x'], summary['worker_mu_y'],
             summary['worker_sigma_x'], summary['worker_sigma_y'], summary['worker_rho'],
             summary['worker_r_mu'], summary['worker_r_sigma'],

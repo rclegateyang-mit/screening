@@ -18,6 +18,17 @@ _DEFAULTS: Dict[str, str] = {
     "output_dir": str(PROJECT_ROOT / "output"),
 }
 
+# Canonical data sub-directories
+DATA_RAW = "raw"
+DATA_CLEAN = "clean"
+DATA_BUILD = "build"
+
+# Canonical output sub-directories
+OUTPUT_EQUILIBRIUM = "equilibrium"
+OUTPUT_WORKERS = "workers"
+OUTPUT_MARKDOWNS = "markdowns"
+OUTPUT_ESTIMATION = "estimation"
+
 
 def _normalize(path: str) -> str:
     return str(Path(path).expanduser().resolve())
@@ -76,6 +87,22 @@ def get_output_dir(*, create: bool = False) -> Path:
     return path
 
 
+def get_data_subdir(sub: str, *, create: bool = False) -> Path:
+    """Return a data sub-directory (e.g. 'raw', 'clean', 'build')."""
+    path = get_data_dir() / sub
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def get_output_subdir(sub: str, *, create: bool = False) -> Path:
+    """Return an output sub-directory (e.g. 'equilibrium', 'workers', 'markdowns', 'estimation')."""
+    path = get_output_dir() / sub
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def configure_paths(
     *,
     data_dir: str | os.PathLike[str] | None = None,
@@ -123,4 +150,9 @@ def __dir__():
     )
 
 
-__all__ = ["configure_paths", "get_data_dir", "get_output_dir", "get_paths", "PATHS"]
+__all__ = [
+    "configure_paths", "get_data_dir", "get_output_dir", "get_paths", "PATHS",
+    "get_data_subdir", "get_output_subdir",
+    "DATA_RAW", "DATA_CLEAN", "DATA_BUILD",
+    "OUTPUT_EQUILIBRIUM", "OUTPUT_WORKERS", "OUTPUT_MARKDOWNS", "OUTPUT_ESTIMATION",
+]

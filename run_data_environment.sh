@@ -11,18 +11,18 @@ PREP_ARGS=(
   --quad_n_x 25
   --quad_n_y 25
   --conduct_mode 1
-  --gamma 0.4
-  --alpha 10
+  --tau 0.4
+  --eta 10
   --seed 12345
-  --firms_input_path data/input_firms.csv
-  --beta 0.2
+  --firms_input_path data/raw/input_firms.csv
+  --alpha 0.2
   --worker_loc_mode cartesian
   --rho_x_skill_ell_x 0.3
   --rho_x_skill_ell_y 0.3
   --mu_x_skill 12
   --sigma_x_skill 5
-  --mu_a_skill 0 
-  --sigma_a_skill 0
+  --mu_e 0
+  --sigma_e 0
 )
 
 SOLVE_ARGS=(
@@ -46,7 +46,7 @@ WORKERS_ARGS=(
 )
 
 MARKDOWN_ARGS=(
-  --workers_noscreening_path "${repo_root}/data/workers_dataset_noscreening.csv"
+  --workers_noscreening_path "${repo_root}/data/build/workers_dataset_noscreening.csv"
 )
 
 run_module() {

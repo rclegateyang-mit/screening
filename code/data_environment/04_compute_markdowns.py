@@ -29,11 +29,11 @@ import numpy as np
 import pandas as pd
 
 try:
-    from .. import get_data_dir
+    from .. import get_data_subdir, get_output_subdir, DATA_RAW, DATA_CLEAN, DATA_BUILD, OUTPUT_MARKDOWNS
 except ImportError:  # pragma: no cover - direct script execution
     project_root = Path(__file__).resolve().parents[2]
     sys.path.append(str(project_root))
-    from code import get_data_dir  # type: ignore
+    from code import get_data_subdir, get_output_subdir, DATA_RAW, DATA_CLEAN, DATA_BUILD, OUTPUT_MARKDOWNS  # type: ignore
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ def read_parameters_csv(path: Path) -> Dict[str, float]:
             params[key] = float(row["value"])
         except (TypeError, ValueError):
             continue
-    required = {"alpha", "beta", "mu_s"}
+    required = {"eta", "alpha", "mu_s"}
     missing = required - params.keys()
     if missing:
         raise ValueError(f"Missing required parameters {missing} in {path}.")
@@ -70,13 +70,13 @@ def ensure_directory(path: Path) -> None:
 
 
 def compute_firm_markdowns(equilibrium_df: pd.DataFrame, params: Dict[str, float]) -> pd.DataFrame:
-    """Compute firm-level markdowns evaluated at S_j and market-average skill."""
-    required_cols = {"firm_id", "w", "L", "S", "A"}
+    """Compute firm-level markdowns evaluated at Q_j and market-average skill."""
+    required_cols = {"firm_id", "w", "L", "Q", "A"}
     missing = required_cols - set(equilibrium_df.columns)
     if missing:
         raise ValueError(f"Equilibrium data missing required columns: {missing}")
 
-    beta = params["beta"]
+    alpha = params["alpha"]
     mu_s = params["mu_s"]
     N_workers = float(params.get("N_workers", 1.0))
     if not np.isfinite(N_workers) or N_workers <= 0:
@@ -85,25 +85,25 @@ def compute_firm_markdowns(equilibrium_df: pd.DataFrame, params: Dict[str, float
     eps = 1e-12
     L_share = np.maximum(equilibrium_df["L"].to_numpy(dtype=float), eps)
     L_counts = np.maximum(L_share * N_workers, eps)
-    S = np.maximum(equilibrium_df["S"].to_numpy(dtype=float), eps)
+    Q = np.maximum(equilibrium_df["Q"].to_numpy(dtype=float), eps)
     w = equilibrium_df["w"].to_numpy(dtype=float)
     A = equilibrium_df["A"].to_numpy(dtype=float)
-    if "c" in equilibrium_df.columns:
-        c_vals = equilibrium_df["c"].to_numpy(dtype=float)
+    if "qbar" in equilibrium_df.columns:
+        qbar_vals = equilibrium_df["qbar"].to_numpy(dtype=float)
     else:
-        c_vals = np.full_like(L_share, np.nan)
+        qbar_vals = np.full_like(L_share, np.nan)
     firm_ids = equilibrium_df["firm_id"].to_numpy(dtype=int)
 
-    # MRPL_j(s) = s * (1 - beta) * A_j / (L_j * S_j)^beta
-    LS_prod = np.maximum(L_counts * S, eps)
-    mrpl_scale = (1.0 - beta) * A / np.power(LS_prod, beta)
+    # MRPL_j(s) = s * (1 - alpha) * A_j / (L_j * Q_j)^alpha
+    LS_prod = np.maximum(L_counts * Q, eps)
+    mrpl_scale = (1.0 - alpha) * A / np.power(LS_prod, alpha)
 
-    mrpl_at_Sj = S * mrpl_scale
-    markdown_Sj = np.where(mrpl_at_Sj > eps, (mrpl_at_Sj - w) / mrpl_at_Sj, np.nan)
+    mrpl_at_Qj = Q * mrpl_scale
+    markdown_Qj = np.where(mrpl_at_Qj > eps, (mrpl_at_Qj - w) / mrpl_at_Qj, np.nan)
 
-    S_market = float(mu_s)
-    mrpl_at_Sbar = S_market * mrpl_scale
-    markdown_Sbar = np.where(mrpl_at_Sbar > eps, (mrpl_at_Sbar - w) / mrpl_at_Sbar, np.nan)
+    Q_market = float(mu_s)
+    mrpl_at_Qbar = Q_market * mrpl_scale
+    markdown_Qbar = np.where(mrpl_at_Qbar > eps, (mrpl_at_Qbar - w) / mrpl_at_Qbar, np.nan)
 
     df = pd.DataFrame(
         {
@@ -113,13 +113,13 @@ def compute_firm_markdowns(equilibrium_df: pd.DataFrame, params: Dict[str, float
             "L": L_share,
             "L_share": L_share,
             "L_workers": L_counts,
-            "S_j": S,
-            "c": c_vals,
-            "markdown_at_Sj": markdown_Sj,
-            "markdown_at_S_market": markdown_Sbar,
+            "Q_j": Q,
+            "qbar": qbar_vals,
+            "markdown_at_Qj": markdown_Qj,
+            "markdown_at_Q_market": markdown_Qbar,
         }
     )
-    if c_vals is not None and {"elastic_L_w_w", "elastic_S_w_w"}.issubset(equilibrium_df.columns):
+    if qbar_vals is not None and {"elastic_L_w_w", "elastic_S_w_w"}.issubset(equilibrium_df.columns):
         eps_elastic = 1e-12
         elastic_L = equilibrium_df["elastic_L_w_w"].to_numpy(dtype=float)
         elastic_S = equilibrium_df["elastic_S_w_w"].to_numpy(dtype=float)
@@ -154,7 +154,7 @@ def compute_worker_markdowns(
     firm_ids = firm_markdowns["firm_id"].to_numpy(dtype=int)
     mrpl_scale = firm_markdowns.attrs["mrpl_scale"]
     wages = firm_markdowns["w"].to_numpy(dtype=float)
-    firm_avg_skill = firm_markdowns["S_j"].to_numpy(dtype=float)
+    firm_avg_skill = firm_markdowns["Q_j"].to_numpy(dtype=float)
 
     if {"elastic_L_w_w", "elastic_S_w_w"}.issubset(firm_markdowns.columns):
         elastic_L = firm_markdowns["elastic_L_w_w"].to_numpy(dtype=float)
@@ -443,7 +443,7 @@ def plot_screen_vs_noscreen_by_index(
     worker_df: pd.DataFrame | None = None,
 ) -> bool:
     """Compare screening vs no-screening L/w/S by firm index."""
-    required_screen = {"firm_id", "L", "w", "S_j"}
+    required_screen = {"firm_id", "L", "w", "Q_j"}
     required_noscreen = {"firm_id", "L_noscreening", "w_noscreening", "S_noscreening"}
     if not required_screen.issubset(firm_df_screen.columns) or not required_noscreen.issubset(
         firm_df_noscreen.columns
@@ -478,10 +478,10 @@ def plot_screen_vs_noscreen_by_index(
     series = [
         ("L", "L_noscreening", "Labor $L_j$"),
         ("w", "w_noscreening", "Wage $w_j$"),
-        ("S_j", "S_noscreening", "Average skill $S_j$"),
+        ("Q_j", "S_noscreening", "Average skill $Q_j$"),
     ]
-    if "c" in df.columns:
-        series.append(("c", None, "Cutoff $c_j$"))
+    if "qbar" in df.columns:
+        series.append(("qbar", None, r"Cutoff $\bar{q}_j$"))
 
     fig, axes = plt.subplots(len(series), 1, figsize=(10, 4 * len(series)), sharex=True)
     if not isinstance(axes, np.ndarray):
@@ -576,23 +576,23 @@ def plot_firm_markdowns(firm_df: pd.DataFrame, out_path: Path) -> None:
     """Scatter markdowns vs firm-average skill."""
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.scatter(
-        firm_df["S_j"],
-        firm_df["markdown_at_Sj"],
+        firm_df["Q_j"],
+        firm_df["markdown_at_Qj"],
         marker="o",
         s=60,
         alpha=0.85,
-        label="Using firm average skill $S_j$",
+        label="Using firm average skill $Q_j$",
     )
     ax.scatter(
-        firm_df["S_j"],
-        firm_df["markdown_at_S_market"],
+        firm_df["Q_j"],
+        firm_df["markdown_at_Q_market"],
         marker="s",
         s=60,
         alpha=0.85,
-        label="Using market average skill $\\bar{S}$",
+        label="Using market average skill $\\bar{Q}$",
     )
     ax.axhline(0.0, color="grey", linewidth=1, linestyle="--")
-    ax.set_xlabel("Firm average skill $S_j$")
+    ax.set_xlabel("Firm average skill $Q_j$")
     ax.set_ylabel("Markdown")
     ax.set_title("Firm-Level Wage Markdowns")
     ax.legend()
@@ -603,18 +603,18 @@ def plot_firm_markdowns(firm_df: pd.DataFrame, out_path: Path) -> None:
 
 def plot_wage_vs_skill(firm_df: pd.DataFrame, out_path: Path) -> bool:
     """Scatter wages vs firm-average skill."""
-    if not {"w", "S_j"}.issubset(firm_df.columns):
+    if not {"w", "Q_j"}.issubset(firm_df.columns):
         return False
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.scatter(
-        firm_df["S_j"],
+        firm_df["Q_j"],
         firm_df["w"],
         marker="o",
         s=60,
         alpha=0.85,
         label="Firm wage vs average skill",
     )
-    ax.set_xlabel("Firm average skill $S_j$")
+    ax.set_xlabel("Firm average skill $Q_j$")
     ax.set_ylabel("Wage $w_j$")
     ax.set_title("Wages vs Firm Average Skill")
     ax.legend()
@@ -638,8 +638,8 @@ def plot_firm_size_scatter(firm_df: pd.DataFrame, out_path: Path, title_suffix: 
     plot_specs = [
         ("w", "Wage", "o"),
         ("A", "TFP", "s"),
-        ("c", "Cutoff", "^"),
-        ("S_j", "Avg skill", "D"),
+        ("qbar", "Cutoff", "^"),
+        ("Q_j", "Avg skill", "D"),
     ]
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
@@ -682,13 +682,13 @@ def plot_firm_size_scatter(firm_df: pd.DataFrame, out_path: Path, title_suffix: 
 
 def plot_markup_vs_cutoff(firm_df: pd.DataFrame, out_path: Path) -> bool:
     """Scatter wage markup proxies against cutoff costs."""
-    required = {"c", "markup_naive", "markup_screening", "markup_naive_pass_through"}
+    required = {"qbar", "markup_naive", "markup_screening", "markup_naive_pass_through"}
     if not required.issubset(firm_df.columns):
         return False
 
     fig, ax = plt.subplots(figsize=(8, 5))
     screening_scatter = ax.scatter(
-        firm_df["c"],
+        firm_df["qbar"],
         firm_df["markup_screening"],
         marker="^",
         s=70,
@@ -696,7 +696,7 @@ def plot_markup_vs_cutoff(firm_df: pd.DataFrame, out_path: Path) -> bool:
         label=r"Screening $(1-\varepsilon_j^S)/(1+\varepsilon_j^L)$",
     )
     naive_scatter = ax.scatter(
-        firm_df["c"],
+        firm_df["qbar"],
         firm_df["markup_naive"],
         marker="o",
         s=60,
@@ -704,14 +704,14 @@ def plot_markup_vs_cutoff(firm_df: pd.DataFrame, out_path: Path) -> bool:
         label=r"Naive (correct elasticity) $1/(1+\varepsilon_j^L)$",
     )
     passthrough_scatter = ax.scatter(
-        firm_df["c"],
+        firm_df["qbar"],
         firm_df["markup_naive_pass_through"],
         marker="d",
         s=60,
         alpha=0.85,
         label=r"Naive pass-through $1/(1+\varepsilon_{j}^{L,A}/\varepsilon_{j}^{w,A})$",
     )
-    ax.set_xlabel("Firm cutoff $c_j$")
+    ax.set_xlabel(r"Firm cutoff $\bar{q}_j$")
     ax.set_ylabel("Wage markdown")
     ax.set_ylim(0.0, 0.35)
     ax.set_title("Wage Markdowns in Naive and Screening Models")
@@ -753,7 +753,7 @@ def plot_markup_vs_cutoff_quantiles(
     regime_offset: float = 0.0,
 ) -> bool:
     """Plot markup proxies vs cutoff quantiles from the worker skill distribution."""
-    required = {"c", "markup_naive", "markup_screening", "markup_naive_pass_through"}
+    required = {"qbar", "markup_naive", "markup_screening", "markup_naive_pass_through"}
     if not required.issubset(firm_df.columns):
         return False
 
@@ -960,7 +960,7 @@ def plot_markup_vs_cutoff_quantiles(
         )
         ax.set_xlim(-0.5, 1.5)
         quantiles = _cutoff_quantiles_from_workers(
-            firm_df["c"].to_numpy(dtype=float), worker_df
+            firm_df["qbar"].to_numpy(dtype=float), worker_df
         )
         if quantiles is not None and np.all(np.isfinite(quantiles)):
             quantiles_ordered = quantiles[order]
@@ -1137,7 +1137,7 @@ def plot_markup_vs_cutoff_quantiles(
         plt.close(fig)
         return True
 
-    cutoffs = firm_df["c"].to_numpy(dtype=float)
+    cutoffs = firm_df["qbar"].to_numpy(dtype=float)
     quantiles = _cutoff_quantiles_from_workers(cutoffs, worker_df)
     if quantiles is None:
         return False
@@ -1392,45 +1392,54 @@ def plot_markdowns_vs_firm_index(firm_df: pd.DataFrame, out_path: Path) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    data_dir = get_data_dir(create=True)
+    raw_dir = get_data_subdir(DATA_RAW, create=True)
+    clean_dir = get_data_subdir(DATA_CLEAN, create=True)
+    build_dir = get_data_subdir(DATA_BUILD, create=True)
+    plot_dir = get_output_subdir(OUTPUT_MARKDOWNS, create=True)
     parser = argparse.ArgumentParser(
         description="Compute implied wage markdowns from equilibrium outcomes."
     )
     parser.add_argument(
         "--equilibrium_path",
         type=str,
-        default=str(data_dir / "equilibrium_firms.csv"),
+        default=str(clean_dir / "equilibrium_firms.csv"),
         help="CSV with equilibrium firm outcomes.",
     )
     parser.add_argument(
         "--equilibrium_noscreening_path",
         type=str,
-        default=str(data_dir / "equilibrium_firms_noscreening.csv"),
+        default=str(clean_dir / "equilibrium_firms_noscreening.csv"),
         help="Optional CSV with no-screening equilibrium outcomes.",
     )
     parser.add_argument(
         "--params_path",
         type=str,
-        default=str(data_dir / "parameters_effective.csv"),
+        default=str(raw_dir / "parameters_effective.csv"),
         help="CSV with model parameters.",
     )
     parser.add_argument(
         "--workers_path",
         type=str,
-        default=str(data_dir / "workers_dataset.csv"),
+        default=str(build_dir / "workers_dataset.csv"),
         help="Optional worker dataset CSV (skips worker-level markdowns if missing).",
     )
     parser.add_argument(
         "--workers_noscreening_path",
         type=str,
-        default=str(data_dir / "workers_dataset_noscreening.csv"),
+        default=str(build_dir / "workers_dataset_noscreening.csv"),
         help="Optional worker dataset CSV for no-screening equilibrium (used in overlay plots if present).",
     )
     parser.add_argument(
         "--out_dir",
         type=str,
-        default=str(data_dir),
-        help="Directory to write markdown diagnostics.",
+        default=str(build_dir),
+        help="Directory to write markdown data CSVs.",
+    )
+    parser.add_argument(
+        "--plot_dir",
+        type=str,
+        default=str(plot_dir),
+        help="Directory to write markdown plots (defaults to output/markdowns/).",
     )
     return parser.parse_args()
 
@@ -1445,6 +1454,7 @@ def main() -> int:
         Path(args.workers_noscreening_path) if args.workers_noscreening_path is not None else None
     )
     out_dir = Path(args.out_dir)
+    plot_dir = Path(args.plot_dir)
 
     print("Implied Wage Markdown Computation (Data Environment Item 4)")
     print("=" * 70)
@@ -1456,6 +1466,7 @@ def main() -> int:
     if workers_noscreen_path is not None:
         print(f"Worker data (no-screening): {workers_noscreen_path if workers_noscreen_path.exists() else '(not found)'}")
     print(f"Output directory: {out_dir}")
+    print(f"Plot directory:   {plot_dir}")
 
     if not equilibrium_path.exists():
         print(f"Error: equilibrium file {equilibrium_path} does not exist.")
@@ -1465,6 +1476,7 @@ def main() -> int:
         return 1
 
     ensure_directory(out_dir)
+    ensure_directory(plot_dir)
 
     firm_df_noscreen = None
     if equilibrium_noscreening_path.exists():
@@ -1495,35 +1507,35 @@ def main() -> int:
             print(f"[WARN] Could not compute no-screening markdowns: {exc}")
 
     # Plot firm markdowns
-    firm_plot_path = out_dir / "firm_markdowns_vs_average_skill.png"
+    firm_plot_path = plot_dir / "firm_markdowns_vs_average_skill.png"
     plot_firm_markdowns(firm_markdowns, firm_plot_path)
     print(f"[OK] Firm markdown plot saved to {firm_plot_path}")
 
-    wage_skill_plot_path = out_dir / "wages_vs_skill.png"
+    wage_skill_plot_path = plot_dir / "wages_vs_skill.png"
     if plot_wage_vs_skill(firm_markdowns, wage_skill_plot_path):
         print(f"[OK] Wage vs skill plot saved to {wage_skill_plot_path}")
     else:
         print("[WARN] Wage vs skill plot skipped (missing columns).")
 
-    size_plot_path = out_dir / "firm_size_scatter.png"
+    size_plot_path = plot_dir / "firm_size_scatter.png"
     if plot_firm_size_scatter(firm_markdowns, size_plot_path):
         print(f"[OK] Firm size scatter saved to {size_plot_path}")
     else:
         print("[WARN] Firm size scatter skipped (missing data).")
     if firm_df_noscreen is not None:
-        size_plot_ns_path = out_dir / "firm_size_scatter_noscreening.png"
+        size_plot_ns_path = plot_dir / "firm_size_scatter_noscreening.png"
         if plot_firm_size_scatter(firm_df_noscreen, size_plot_ns_path, title_suffix=" (no-screening)"):
             print(f"[OK] Firm size scatter (no-screening) saved to {size_plot_ns_path}")
         else:
             print("[WARN] Firm size scatter (no-screening) skipped (missing data).")
 
-    markup_plot_path = out_dir / "markup_vs_cutoff.png"
+    markup_plot_path = plot_dir / "markup_vs_cutoff.png"
     if plot_markup_vs_cutoff(firm_markdowns, markup_plot_path):
         print(f"[OK] Markup vs cutoff plot saved to {markup_plot_path}")
     else:
         print("[WARN] Elasticity columns not found; skipping markup vs cutoff plot.")
 
-    idx_plot_path = out_dir / "firm_markdowns_vs_firm_index.png"
+    idx_plot_path = plot_dir / "firm_markdowns_vs_firm_index.png"
     if plot_markdowns_vs_firm_index(firm_markdowns, idx_plot_path):
         print(f"[OK] Markdown vs firm index plot saved to {idx_plot_path}")
     else:
@@ -1538,7 +1550,7 @@ def main() -> int:
                 worker_df_noscreen = pd.read_csv(workers_noscreen_path)
             except Exception as exc:
                 print(f"[WARN] Could not read worker no-screening dataset: {exc}")
-        quantile_screening_vs_no_path = out_dir / "markup_vs_cutoff_quantiles_screening_vs_noscreening.png"
+        quantile_screening_vs_no_path = plot_dir / "markup_vs_cutoff_quantiles_screening_vs_noscreening.png"
         if plot_markup_vs_cutoff_quantiles(
             firm_markdowns,
             worker_df,
@@ -1558,7 +1570,7 @@ def main() -> int:
             )
         else:
             print("[WARN] Skipping screening vs no-screening quantiles plot (missing data).")
-        quantile_screening_only_path = out_dir / "markup_vs_cutoff_quantiles_screening_only.png"
+        quantile_screening_only_path = plot_dir / "markup_vs_cutoff_quantiles_screening_only.png"
         if plot_markup_vs_cutoff_quantiles(
             firm_markdowns,
             worker_df,
@@ -1585,17 +1597,17 @@ def main() -> int:
             worker_markdowns.to_csv(worker_output, index=False)
             print(f"[OK] Worker markdowns written to {worker_output}")
 
-            worker_plot_path = out_dir / "worker_markdowns_vs_skill.png"
+            worker_plot_path = plot_dir / "worker_markdowns_vs_skill.png"
             plot_worker_markdowns(worker_markdowns, worker_plot_path)
             print(f"[OK] Worker markdown plot saved to {worker_plot_path}")
 
-            worker_wage_plot_path = out_dir / "worker_wages_vs_skill.png"
+            worker_wage_plot_path = plot_dir / "worker_wages_vs_skill.png"
             if plot_worker_wages_vs_skill(worker_markdowns, worker_wage_plot_path):
                 print(f"[OK] Worker wages vs skill plot saved to {worker_wage_plot_path}")
             else:
                 print("[WARN] Worker wages vs skill plot skipped (missing data).")
 
-            worker_firm_plot_path = out_dir / "worker_markdowns_by_firm.png"
+            worker_firm_plot_path = plot_dir / "worker_markdowns_by_firm.png"
             if plot_worker_markdowns_by_firm(worker_markdowns, firm_markdowns, worker_firm_plot_path):
                 print(f"[OK] Worker markdown by firm plot saved to {worker_firm_plot_path}")
             else:
@@ -1604,15 +1616,15 @@ def main() -> int:
         # Binned plots using no-screening equilibrium if available (overlay with screening)
         if firm_df_noscreen is not None:
             try:
-                if binscatter_unemp_and_wage_overlay(worker_df, worker_df_noscreen, firm_markdowns, firm_df_noscreen, out_dir):
-                    print(f"[OK] Overlay unemployment/wage vs skill plots saved to {out_dir}")
+                if binscatter_unemp_and_wage_overlay(worker_df, worker_df_noscreen, firm_markdowns, firm_df_noscreen, plot_dir):
+                    print(f"[OK] Overlay unemployment/wage vs skill plots saved to {plot_dir}")
                 else:
                     print("[WARN] Could not create overlay binscatter (missing data).")
             except Exception as exc:
                 print(f"[WARN] Skipping overlay binscatter due to error: {exc}")
     else:
-        # Fallback: try default data/worker_dataset.csv for distance calculations and labels
-        fallback_worker = Path("data/worker_dataset.csv")
+        # Fallback: try default data/build/workers_dataset.csv for distance calculations and labels
+        fallback_worker = get_data_subdir(DATA_BUILD) / "workers_dataset.csv"
         if fallback_worker.exists():
             try:
                 worker_df = pd.read_csv(fallback_worker)
@@ -1624,7 +1636,7 @@ def main() -> int:
             print("[WARN] Worker dataset not provided or missing; skipping worker-level markdowns.")
 
     if firm_df_noscreen is not None:
-        compare_path = out_dir / "firm_screen_vs_noscreen_by_index.png"
+        compare_path = plot_dir / "firm_screen_vs_noscreen_by_index.png"
         if plot_screen_vs_noscreen_by_index(firm_markdowns, firm_df_noscreen, compare_path, worker_df):
             print(f"[OK] Screening vs no-screening (by firm index) plot saved to {compare_path}")
         else:
