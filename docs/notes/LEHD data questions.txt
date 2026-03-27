@@ -1,0 +1,48 @@
+
+** LEHD microdata questions **
+* Data available for workers * 
+Earnings (EHF/JHF): Quarterly earnings from state UI wage records. Near-universal coverage (>95% of employment; excludes independent contractors, federal employees, railroad workers). About 1.5% of job-quarters have imputed earnings due to underreporting.
+
+Residence (ICF_US_RESIDENCE): Annual residential location at census-block level (lat/lon and FIPS geocode). 
+
+Sex, date of birth, place of birth (ICF, Stage A): ~5% missing. Imputed via nonparametric KDE using Numident, Census, and ACS as sources.
+
+Race and ethnicity (ICF, Stage B): ~20% missing. Imputed via CART + KDE conditioning on sex, DOB, earnings quartiles, POB, and coworker/co-resident demographics. Moderate quality; the missingness rate is nontrivial but conditioning variables are informative.
+
+Education (ICF, Stage C): ~80-85% missing; only available for workers age 25+. Four categories (< HS, HS, some college, BA+). Observed values come from Census 2000 long form (~7% coverage) and ACS (~15% cumulative). Imputation uses a log-linear model + KDE with two quality tiers:
+  - Full-information imputation (workers with pre-2009 earnings): conditions on sex, age, race, POB, earnings deciles, industry, coworker/co-resident demographics. Run once in 2010 and never updated.
+  - Limited-information imputation (workers entering 2009+): conditions only on sex, age, race, ethnicity, POB. Does not use earnings or workplace characteristics, and draws from frozen 2010 PPDs.
+  Out-of-sample accuracy is modest: 26-47% correct category assignment depending on education level (vs. 80-94% for non-imputed). 
+
+Employer linkage: Workers are linked to establishments (SEIN/SEINUNIT) via UI records. For multi-unit employers, worker-to-establishment assignment is imputed (U2W) using establishment size and worker residence-to-establishment distance.
+
+* Priority questions * 
+1. Proxy for worker skill
+Require (u_ij)_j \perp v_i | (w_j)_j, (xi_j)_j and \ln q_i strictly increasing in v_i 
+Past wage:
+- Transparent, availible, and for experienced workers can use previous-firm wage
+- Concerns:
+a. Contamination with location: my past wage reflects my location and my skill. If v_i is a function of past (d_ij)_j, it's likely that unobserved skill e_i is correlated with current (d_ij)_j; this is an exclusion violation for distance. Concretely, a high-skill worker who lived near low-wage firms may have low past wages to avoid long commutes; this worker's skill residual is large and positive, and correlated with their location.
+b. Contamination with preference: my past wage reflects my preference and my skill. If v_i is a function of past (u_ij)_j, it's likely that unobserved skill e_i is correlated with current (u_ij)_j; this is an exclusion vilation for v_i. Concretely, a high-skill worker who idiosyncratically prefers a low-wage firm may have low past wages; this worker's skill residual is large and positive, and correlted with their preferences.
+- Concern a. can be somewhat addressed by looking at past wages of my coworkers (my neighbors have past d_ij similar to mine), assuming that workers don't systematically sort near firms where they work
+- Concern b. can be somewhat addressed by looking at past wages of my neighbors (my coworkers have past varepsilon_ij similar to mine), assuming that there is no spaital correlation in u_ij (which amounts to assuming that workers don't sort near firms they idiosyncratically prefer)
+Measures based on axuillary demographic orincome data of my coworkers or neigbhors (e.g. census tract income measures) share similar properties
+
+2. Within-firm wage variation 
+Wages vary within establishment. This poses at least 2 questions: 
+a. How many wages and cutoffs does the firm set, and for which groups are these tailored? We could define education x experience cells and define firm production in terms of an aggregate of different kinds of labor. How do we identify substitutino between different kinds of labor?
+b. What wage should we use when estimating wage preference coefficient in E[\delta_j - eta ln w_j | z_j^1] = 0?
+
+
+[[[comment these out]]]
+* Instrument for firm scale * 
+Require E[ln A_j | z_j^2] = 0 
+For example, observed exogenous variation in amenities. Exogenous amenities are an instrument for the relationship between revenue and (skill composition adjusted) firm size 
+Ideas:
+- Entry or exit of nearby firms
+
+* Instrument for wage * 
+Require E[ln xi_j | z_j^1] = 0
+For example, observed exogenous variation in TFP. Exogeonus TFP is an instrument for the relationship between (screening adjusted) firm size and wages 
+
+

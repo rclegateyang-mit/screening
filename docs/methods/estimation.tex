@@ -1,0 +1,643 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newcommand{\openq}[1]{\medskip\noindent\textcolor{red}{\textbf{Open Question:} #1}\medskip}
+
+\begin{document}
+
+\begin{center}
+{\large \textbf{Estimation}}
+\end{center}
+
+\section{Setup and Notation}
+
+\subsection{Preferences and Production}
+
+Worker $i$'s indirect utility for firm $j$ is
+\[
+U_{ij} = \delta_j - \tau d_{ij} + \varepsilon_{ij}, \quad \delta_j \equiv \eta \ln w_j + \xi_j,
+\]
+where $\varepsilon_{ij}$ is i.i.d.\ Gumbel, $d_{ij}$ is commuting distance, $\eta>0$ is wage sensitivity, and $\tau>0$ is commuting disutility. Production is $R_j = A_j H_j^{1-\alpha}$, where $H_j = L_j Q_j$ is efficiency units of labor, $Q_j$ is average skill, and $\alpha\in(0,1)$.
+
+\subsection{Skill Specification}
+
+We consider two skill specifications. All other notation ($\bar q_j$, $\delta_j$, $\tau$, $\alpha$, $\eta$, $\gamma$, $v_i$, $e_i$, $G_e$, $Q_j$) is common to both.
+
+\paragraph{Specification A (additive).} Worker skill is linear in observables:
+\[
+q_i = \gamma_0 + \gamma_1 v_i + e_i, \quad e_i\sim N(0,\sigma_e^2),
+\]
+where $v_i$ is an observed skill proxy, $e_i$ is unobserved skill, and $\gamma_0$ is a location parameter. Average skill at firm $j$ is $Q_j = \frac{1}{L_j}\sum_{i:y_i=j}(\gamma_0+\gamma_1 v_i + e_i)$. Acceptance requires $q_i \geq \bar q_j$, i.e., $e_i\geq \bar q_j - \gamma_0 - \gamma_1 v_i$.
+
+\medskip\noindent\textit{Standardized reparametrization.} The match probabilities depend on skill only through $\Phi\!\left(\frac{\bar q_j - \gamma_0 - \gamma_1 v_i}{\sigma_e}\right)$. Define the standardized parameters
+\[
+\tilde q_j \equiv \frac{\bar q_j - \gamma_0}{\sigma_e}, \qquad \tilde\gamma \equiv \frac{\gamma_1}{\sigma_e},
+\]
+so that $t_j(v_i) = \tilde q_j - \tilde\gamma\, v_i$ in standardized units. The micro data identify $(\tilde\gamma, \{\tilde q_j\})$ and the preference parameters $(\{\delta_j\},\tau)$. The structural parameters $(\gamma_0,\sigma_e)$---and hence $\gamma_1 = \tilde\gamma\,\sigma_e$---require macro/production data (Section~\ref{sec:macro}).
+
+\paragraph{Specification M (multiplicative, project description).} Log skill is linear:
+\[
+\ln q_i = \gamma_0 + \gamma_1 v_i + e_i, \quad e_i\sim N(0,\sigma_e^2),
+\]
+so $q_i = \exp(\gamma_0 + \gamma_1 v_i + e_i)$. Average skill is $Q_j = \frac{1}{L_j}\sum_{i:y_i=j}\exp(\gamma_0 + \gamma_1 v_i + e_i)$. Acceptance requires $q_i \geq \bar q_j$, i.e., $e_i\geq \ln\bar q_j - \gamma_0 - \gamma_1 v_i$.
+
+\medskip\noindent\textit{Standardized reparametrization.} Match probabilities depend on skill only through $\Phi\!\left(\frac{\ln\bar q_j - \gamma_0 - \gamma_1 v_i}{\sigma_e}\right)$. Define
+\[
+\tilde q_j \equiv \frac{\ln\bar q_j - \gamma_0}{\sigma_e}, \qquad \tilde\gamma \equiv \frac{\gamma_1}{\sigma_e},
+\]
+so that $t_j(v_i) = \tilde q_j - \tilde\gamma\, v_i$. As in Specification~A, the micro data identify $(\tilde\gamma, \{\tilde q_j\})$ and $(\{\delta_j\},\tau)$. The structural parameters $(\gamma_0,\sigma_e)$ require macro data, but the identification argument differs from Specification~A because $\gamma_0$ cancels from the $A_j$-free moment (Section~\ref{sec:macro}).
+
+\medskip
+\noindent Under both specifications, the screening FOC yields
+\[
+w_j = \text{MRPL}_j(\bar q_j) = \bar q_j \cdot A_j(1-\alpha)(Q_jL_j)^{-\alpha},
+\]
+which can be rewritten as $\bar q_j/Q_j = w_j / ((1-\alpha)R_j/L_j)$. In logs:
+\begin{equation}\label{eq:screen_foc}
+\ln \bar q_j = \ln w_j - \ln A_j - \ln(1-\alpha) + \alpha \ln(Q_jL_j).
+\end{equation}
+
+\subsection{Match Probabilities}
+
+Define the threshold function $t_j(v_i) \equiv \tilde q_j - \tilde\gamma\, v_i$ under both specifications (where $\tilde q_j = (\bar q_j - \gamma_0)/\sigma_e$ under~A and $\tilde q_j = (\ln\bar q_j - \gamma_0)/\sigma_e$ under~M). Then the match probability has a unified form:
+\begin{equation}\label{eq:sigma}
+\sigma_j(v_i,d_i;\theta) = \sum_{O\subseteq \mathcal J,\, j\in O} \left[\Phi\!\left(\min_{k\notin O}t_k(v_i)\right) - \Phi\!\left(\max_{k\in O}t_k(v_i)\right)\right] \frac{\exp(\delta_j - \tau d_{ij})}{1+\sum_{k\in O}\exp(\delta_k - \tau d_{ik})}.
+\end{equation}
+
+\paragraph{Ordering simplification.} Order firms so that $t_{o^{-1}(1)}(v_i)\leq t_{o^{-1}(2)}(v_i)\leq \cdots \leq t_{o^{-1}(J)}(v_i)$ for a representative $v_i$ (i.e., by $\tilde q_j$). With conventions $t_{o^{-1}(0)}\equiv -\infty$ and $t_{o^{-1}(J+1)}\equiv +\infty$:
+\begin{equation}\label{eq:Pj}
+\sigma_j(v_i,d_i;\theta) = \sum_{k=0}^{J} \mathbf{1}[t_j \leq t_{o^{-1}(k)}]\;\left(\Phi(t_{o^{-1}(k+1)}(v_i)) - \Phi(t_{o^{-1}(k)}(v_i))\right)\;\frac{\exp(\delta_j - \tau d_{ij})}{1+\sum_{m=1}^{k}\exp(\delta_{o^{-1}(m)} - \tau d_{i,o^{-1}(m)})}.
+\end{equation}
+
+\paragraph{Parameter partition.} The match probabilities \eqref{eq:sigma}--\eqref{eq:Pj} depend only on the \emph{standardized} parameters:
+\[
+\theta_{\text{micro}} = \big(\underbrace{\tilde\gamma, \tau}_{\text{global}},\; \underbrace{(\delta_j, \tilde q_j)_{j=1}^J}_{\text{firm fixed effects}}\big).
+\]
+The \emph{structural} parameters $(\gamma_0,\sigma_e,\alpha,\eta)$ enter only through the macro/production moments. The full parameter vector is
+\[
+\theta = \big(\underbrace{\tilde\gamma, \tau, \gamma_0,\sigma_e, \alpha, \eta}_{\text{global}},\; \underbrace{(\delta_j, \tilde q_j)_{j=1}^J}_{\text{firm fixed effects}}\big).
+\]
+Given $(\gamma_0,\sigma_e)$, the structural skill parameters are recovered as $\gamma_1 = \tilde\gamma\,\sigma_e$ and $\bar q_j = \gamma_0 + \sigma_e\tilde q_j$ (Spec.~A) or $\ln\bar q_j = \gamma_0 + \sigma_e\tilde q_j$ (Spec.~M).
+In the multi-market extension, $\theta = (\theta_G, (\theta_m)_{m=1}^M)$ where $\theta_G = (\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta)$ and $\theta_m = (\delta_{j_m},\tilde q_{j_m})_{j_m=1}^{J_m}$.
+
+
+\section{The Hybrid MLE/GMM Objective}\label{sec:objective}
+
+Following Grieco, Murry, Pinkse \& Sagl (2025, ``CLEER''), the estimator combines micro-level match data with macro-level (firm-level) moment restrictions. Our context differs from theirs in that we have two sets of firm-level fixed effects---$\delta_j$ and $\bar q_j$---instead of only $\delta_j$.
+
+The overall objective function is
+\begin{equation}\label{eq:combined}
+\boxed{
+\min_{\theta}\; \underbrace{-\sum_{i=1}^N \ln \sigma_{y_i}(v_i, d_i;\theta)}_{\text{Micro: (negative) log likelihood}} \;+\; \underbrace{\frac{1}{2}\hat m(\theta)'\hat W \,\hat m(\theta)}_{\text{Macro: GMM penalty}}
+}
+\end{equation}
+where $y_i\in\{0,1,\ldots,J\}$ denotes worker $i$'s observed match.
+
+\subsection{Micro Component: Likelihood of Matches}
+
+The micro component is the (negative) log likelihood of the observed matches:
+\[
+\mathcal L(\theta) = -\sum_{i=1}^N \ln\sigma_{y_i}(v_i,d_i;\theta).
+\]
+
+\paragraph{Micro likelihood vs.\ micro GMM.} Two interpretations of the micro component are possible, following Grieco et al.\ (2025, Section 6.1):
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{MLE form.} Use $-\sum_i \ln\sigma_{y_i}$ directly as in \eqref{eq:combined}. This exploits the global concavity of the logit kernel in $(\delta,\tau)$ conditional on $(\bar q,\gamma)$ and yields efficient estimates when the micro sample is the dominant source of identification.
+
+    \item \textbf{GMM form (score-based).} Replace the likelihood with a quadratic form in its score:
+    \[
+    \frac{1}{2}\left(\sum_i \sum_{j=1}^{J}\left(y_{ij} - \sigma_j(v_i,d_i;\theta)\right)\nabla_\theta\ln\frac{\sigma_j(v_i,d_i;\theta^{(1)})}{\sigma_0(v_i,d_i;\theta^{(1)})}\right)'\hat W_\mu\left(\sum_i\sum_{j=1}^J (\cdots)\right),
+    \]
+    evaluated at a first-step estimate $\theta^{(1)}$. As discussed in Grieco et al.\ (2025, Section 6.1), this GMM version is asymptotically equivalent to the MLE form when $\hat W_\mu$ and $\hat W_L$ are chosen to reproduce the norming of the likelihood score (their equations (20)--(22)). However, it replaces the computationally tractable logit kernel with a more complicated loss surface that is more prone to local optima.
+\end{enumerate}
+
+\openq{Which form to use for the micro component? The MLE form (a) is computationally more tractable (globally concave in $\delta$ given $\bar q,\gamma$). The GMM form (b) avoids computing $\ln\sigma$ and may be preferable for a unified GMM framework, but Grieco et al.\ note it increases local optima. Current simulations use MLE.}
+
+\paragraph{Mixed data likelihood (Grieco et al.\ eq.\ (7)--(8)).} When the micro sample covers only a subset $I_m\subseteq N_m$ of workers in market $m$, the full data likelihood combines micro and macro terms:
+\[
+\log\hat L(\theta) = \underbrace{\sum_{m}\sum_{j}\sum_{i} D_{im}\,y_{ijm}\ln\frac{\sigma_{jm}^{z_{im}}(\theta)}{\bar\sigma_{jm}(\theta)}}_{\text{micro}} + \underbrace{\sum_m N_m\sum_j s_{jm}\ln\bar\sigma_{jm}(\theta)}_{\text{macro}},
+\]
+where $D_{im}=1$ if $i$ is in the micro sample, $\sigma_{jm}^{z_{im}}$ is the choice probability conditional on demographics $z_{im}$, and $\bar\sigma_{jm}$ is the unconditional choice probability.
+
+\openq{In the Census/LEHD application with near-complete coverage, do we treat $I_m\approx N_m$ (so the macro likelihood term vanishes) or maintain a micro/macro split?}
+
+\subsection{Macro Component: Firm-Level Moment Conditions}\label{sec:macro}
+
+The macro component uses four firm-level population moment conditions to identify $(\eta, \alpha, \sigma_e, \gamma_0)$. We present the moments first for Specification~M, then for Specification~A. We then describe the computation of average skill and write the sample analogs.
+
+Throughout, we use the standardized objects from the micro estimation: $\tilde q_j$, $\tilde\gamma$, $\{\delta_j\}$, and $\tau$. Define standardized log skill $\tilde s_i \equiv \tilde\gamma\, v_i + \tilde e_i$ where $\tilde e_i \sim N(0,1)$.
+
+\subsubsection{Screening FOC in Standardized Form}
+
+The screening FOC $w_j = \bar q_j \cdot A_j(1-\alpha)(Q_jL_j)^{-\alpha}$ can be written in logs. Under Specification~M, $\ln\bar q_j = \gamma_0 + \sigma_e\tilde q_j$ and $\ln Q_j = \gamma_0 + \ln\tilde Q_j^M(\sigma_e)$, giving
+\begin{equation}\label{eq:screen_log_M}
+\underbrace{\ln(1-\alpha) + (1-\alpha)\gamma_0 + \sigma_e\tilde q_j - \alpha\ln\tilde Q_j^M(\sigma_e) - \alpha\ln L_j - \ln w_j}_{=\; -\ln A_j} = 0 \quad (\text{up to } \ln A_j).
+\end{equation}
+Under Specification~A, $\ln\bar q_j = \ln(\gamma_0+\sigma_e\tilde q_j)$ and $\ln Q_j = \ln(\gamma_0 + \sigma_e\tilde Q_j^A)$, giving
+\begin{equation}\label{eq:screen_log_A}
+\underbrace{\ln(1-\alpha) + \ln(\gamma_0+\sigma_e\tilde q_j) - \alpha\ln(\gamma_0+\sigma_e\tilde Q_j^A) - \alpha\ln L_j - \ln w_j}_{=\; -\ln A_j} = 0 \quad (\text{up to } \ln A_j).
+\end{equation}
+Additionally, combining the screening FOC with $R_j = A_j H_j^{1-\alpha}$ eliminates TFP:
+\begin{equation}\label{eq:Aj_free}
+\ln\bar q_j - \ln Q_j = \ln w_j + \ln L_j - \ln(1-\alpha) - \ln R_j.
+\end{equation}
+
+\subsubsection{Population Moments: Specification M}\label{sec:moments_M}
+
+\paragraph{Moment 1: Preference (identifies $\eta$).}
+\begin{equation}\label{eq:m1_M}
+\mathbb{E}\!\left[\delta_j - \eta\ln w_j \;\Big|\; z_j^1\right] = 0,
+\end{equation}
+where $z_j^1$ is an exogenous shock to TFP (which shifts labor demand, hence wages, without directly affecting amenities $\xi_j = \delta_j - \eta\ln w_j$). This is the standard BLP-type demand inversion moment.
+
+\paragraph{Moment 2: Screening FOC (identifies $\alpha$).}
+\begin{equation}\label{eq:m2_M}
+\mathbb{E}\!\left[\ln(1-\alpha) + (1-\alpha)\gamma_0 + \sigma_e\tilde q_j - \alpha\ln\tilde Q_j^M(\sigma_e) - \alpha\ln L_j - \ln w_j \;\Big|\; z_j^2\right] = 0,
+\end{equation}
+where $z_j^2$ is an exogenous shock to amenities (which shifts labor supply, hence wages and workforce composition, without directly affecting TFP). The residual is $-\ln A_j$, and $\alpha$ is the coefficient on $\ln(\tilde Q_j^M \cdot L_j)$. This moment requires $\mathbb{E}[\ln A_j \mid z_j^2]=0$.
+
+\paragraph{Moment 3: $A_j$-free / revenue control (identifies $\sigma_e$).} Substituting \eqref{eq:Aj_free} in standardized form:
+\begin{equation}\label{eq:m3_M}
+\mathbb{E}\!\left[\sigma_e\tilde q_j - \ln\tilde Q_j^M(\sigma_e) - \ln w_j - \ln L_j + \ln(1-\alpha) + \ln R_j\right] = 0.
+\end{equation}
+Revenue acts as a control function that eliminates $A_j$ entirely from this moment---there is no structural residual. At the true parameters, the expression inside the expectation equals zero for every firm $j$, not merely in expectation. As a result, any function of observables can be used to form additional moment conditions; there is no exogeneity requirement because there is nothing to be orthogonal to. Formally, this is analogous to an independent measurement error model: if one treats any discrepancy from zero as classical measurement error (independent of all observables), then any variable is a valid instrument. Under Spec~M, $\gamma_0$ cancels (it enters $\ln\bar q_j$ and $\ln Q_j$ symmetrically), so a single moment ($z_j = 1$) suffices for the single unknown $\sigma_e$. Additional interactions (e.g., $z_j = \tilde q_j$) provide overidentification.
+
+Different values of $\sigma_e$ generate different gaps between $\sigma_e\tilde q_j$ and $\ln\tilde Q_j^M(\sigma_e)$ across firms---the convexity of $\exp(\sigma_e\cdot)$ inflates average skill relative to marginal skill more at high-threshold firms when $\sigma_e$ is large.
+
+\paragraph{Moment 4: TFP normalization (identifies $\gamma_0$).} Taking the unconditional mean of \eqref{eq:screen_log_M} and imposing $\mathbb{E}[\ln A_j]=0$:
+\begin{equation}\label{eq:m4_M}
+\mathbb{E}\!\left[\ln(1-\alpha) + (1-\alpha)\gamma_0 + \sigma_e\tilde q_j - \alpha\ln\tilde Q_j^M(\sigma_e) - \alpha\ln L_j - \ln w_j\right] = 0.
+\end{equation}
+This is Moment~2 evaluated at $z_j^2 = 1$. Given $(\alpha, \sigma_e)$ from Moments~2--3, it pins $\gamma_0$ in closed form:
+\begin{equation}\label{eq:gamma0_M}
+\gamma_0 = \frac{1}{1-\alpha}\left[\mathbb{E}\!\left[\ln w_j + \alpha\ln\tilde Q_j^M(\sigma_e) + \alpha\ln L_j\right] - \mathbb{E}[\sigma_e\tilde q_j] - \ln(1-\alpha)\right].
+\end{equation}
+Equivalently, using revenue: $\gamma_0 = \frac{1}{1-\alpha}\left[\mathbb{E}[\ln R_j] - (1-\alpha)\mathbb{E}[\ln(\tilde Q_j^M(\sigma_e)\cdot L_j)]\right].$
+The interpretation: $\gamma_0$ is the level of log human capital needed to rationalize observed revenues given normalized TFP.
+
+\paragraph{Why $\gamma_0$ requires a TFP normalization under Spec~M.} Shifting $\gamma_0$ by $c$ multiplies all $q_i$ by $e^c$, which is absorbed by $A_j \to A_je^{-c(1-\alpha)}$. The screening FOC residual $-\ln A_j$ shifts by $(1-\alpha)c$ uniformly across firms. Moment~2 (with demeaned instruments $z_j^2$) is insensitive to this shift; only the level restriction in Moment~4 breaks the degeneracy.
+
+\subsubsection{Population Moments: Specification A}\label{sec:moments_A}
+
+Moments~1 and~2 have the same structure, with $\ln\bar q_j$ and $\ln Q_j$ replaced by their Spec~A expressions.
+
+\paragraph{Moment 1: Preference (identifies $\eta$).} Identical to \eqref{eq:m1_M}:
+\begin{equation}\label{eq:m1_A}
+\mathbb{E}\!\left[\delta_j - \eta\ln w_j \;\Big|\; z_j^1\right] = 0.
+\end{equation}
+
+\paragraph{Moment 2: Screening FOC (identifies $\alpha$).}
+\begin{equation}\label{eq:m2_A}
+\mathbb{E}\!\left[\ln(1-\alpha) + \ln(\gamma_0+\sigma_e\tilde q_j) - \alpha\ln(\gamma_0+\sigma_e\tilde Q_j^A) - \alpha\ln L_j - \ln w_j \;\Big|\; z_j^2\right] = 0.
+\end{equation}
+
+\paragraph{Moment 3: $A_j$-free / revenue control (identifies $\sigma_e$ and $\gamma_0$).}
+\begin{equation}\label{eq:m3_A}
+\mathbb{E}\!\left[\ln(\gamma_0+\sigma_e\tilde q_j) - \ln(\gamma_0+\sigma_e\tilde Q_j^A) - \ln w_j - \ln L_j + \ln(1-\alpha) + \ln R_j\right] = 0.
+\end{equation}
+As in Spec~M, revenue eliminates $A_j$ entirely---there is no structural residual, so any function of observables can be used to form moments (see the discussion under Moment~3 for Spec~M). Unlike Spec~M, $\gamma_0$ does \emph{not} cancel: $\ln(\gamma_0+\sigma_e\tilde q_j) - \ln(\gamma_0+\sigma_e\tilde Q_j^A) \neq \text{const}$ as a function of $\gamma_0$, because the additive structure breaks scale invariance. Two moments (e.g., interacted with $z_j = 1$ and $z_j = \tilde q_j$) suffice to identify both $\gamma_0$ and $\sigma_e$ from this moment alone, with no TFP assumption.
+
+\paragraph{Moment 4: TFP normalization (overidentifying under Spec~A).}
+\begin{equation}\label{eq:m4_A}
+\mathbb{E}\!\left[\ln(1-\alpha) + \ln(\gamma_0+\sigma_e\tilde q_j) - \alpha\ln(\gamma_0+\sigma_e\tilde Q_j^A) - \alpha\ln L_j - \ln w_j\right] = 0.
+\end{equation}
+Under Spec~A, since Moment~3 already identifies both $(\gamma_0,\sigma_e)$, Moment~4 is available as an overidentifying restriction (or can be dropped). Under Spec~M, it is essential for $\gamma_0$.
+
+\subsubsection{Summary}
+
+\begin{center}
+\begin{tabular}{lccc}
+\hline
+Moment & Identifies & Spec.~A & Spec.~M \\
+\hline
+1: $\mathbb{E}[\xi_j \mid z_j^1]=0$ & $\eta$ & same & same \\
+2: $\mathbb{E}[\ln A_j \mid z_j^2]=0$ & $\alpha$ & \eqref{eq:m2_A} & \eqref{eq:m2_M} \\
+3: $A_j$-free (revenue) & $\sigma_e$ (+ $\gamma_0$ in A) & \eqref{eq:m3_A} & \eqref{eq:m3_M} \\
+4: $\mathbb{E}[\ln A_j]=0$ & $\gamma_0$ & overidentifying & essential \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsubsection{Computing Average Skill}\label{sec:avg_skill}
+
+The moments above require model-implied average skill $\tilde Q_j$. For each matched worker $i$ with $y_i = j$, we need the posterior expectation of a function of $\tilde e_i$ given the observed match. Using the ordered-threshold structure, define $a_{ik}\equiv \tilde q_{o^{-1}(k)} - \tilde\gamma\, v_i$ and $b_{ik}\equiv \tilde q_{o^{-1}(k+1)} - \tilde\gamma\, v_i$, and let $\pi_{jk}(d_i) \equiv \frac{\exp(\delta_j - \tau d_{ij})}{1+\sum_{m=1}^k\exp(\delta_{o^{-1}(m)}-\tau d_{i,o^{-1}(m)})}$ be the logit probability of choosing $j$ given choice set $O_k = \{o^{-1}(1),\ldots,o^{-1}(k)\}$. Then for a generic function $h(\tilde e_i)$:
+\begin{equation}\label{eq:posterior}
+\mathbb{E}\!\left[h(\tilde e_i)\,\Big|\, y_i=j, v_i, d_i\right] = \frac{1}{\sigma_j(v_i,d_i)}\sum_{k=0}^{J}\mathbf{1}[\tilde q_j \leq \tilde q_{o^{-1}(k)}]\;\pi_{jk}(d_i)\;\left(\Phi(b_{ik})-\Phi(a_{ik})\right)\;\mathbb{E}\!\left[h(\tilde e_i)\,\Big|\,\tilde e_i\in[a_{ik},\,b_{ik}]\right].
+\end{equation}
+
+\paragraph{Specification A.} Set $h(\tilde e) = \tilde e$. With $\tilde e_i\sim N(0,1)$, the truncated expectation has the closed form
+\[
+\mathbb{E}[\tilde e_i \mid \tilde e_i\in[a,b]] = \frac{\phi(a)-\phi(b)}{\Phi(b)-\Phi(a)}.
+\]
+Standardized average skill at firm $j$ is
+\begin{equation}\label{eq:Qhat_A}
+\tilde Q_j^A = \frac{1}{L_j}\sum_{i:\,y_i=j}\left(\tilde\gamma\, v_i + \mathbb{E}[\tilde e_i \mid y_i=j, v_i, d_i]\right).
+\end{equation}
+This quantity is fully determined by $\theta_{\text{micro}}$ and does not depend on $\sigma_e$. Structural average skill is $Q_j = \gamma_0 + \sigma_e\tilde Q_j^A$.
+
+\paragraph{Specification M.} Set $h(\tilde e) = \exp(\sigma_e\tilde e)$. The truncated expectation is
+\[
+\mathbb{E}[\exp(\sigma_e\tilde e_i) \mid \tilde e_i\in[a,b]] = \exp\!\left(\tfrac{\sigma_e^2}{2}\right)\frac{\Phi(b-\sigma_e)-\Phi(a-\sigma_e)}{\Phi(b)-\Phi(a)}.
+\]
+Standardized average skill at firm $j$ is
+\begin{equation}\label{eq:Qhat_M}
+\tilde Q_j^M(\sigma_e) = \frac{1}{L_j}\sum_{i:\,y_i=j}\exp(\sigma_e\tilde\gamma\, v_i)\;\mathbb{E}[\exp(\sigma_e\tilde e_i) \mid y_i=j, v_i, d_i].
+\end{equation}
+This quantity depends on $\sigma_e$ even though all other inputs come from micro estimation: the convexity of $\exp(\sigma_e\cdot)$ means that different values of $\sigma_e$ imply different within-firm skill dispersions in level units. Structural average skill is $Q_j = e^{\gamma_0}\tilde Q_j^M(\sigma_e)$.
+
+\subsubsection{Sample Moment Conditions}\label{sec:sample_moments}
+
+Write $\hat{\mathbb{E}}_j[\cdot] \equiv \frac{1}{J}\sum_{j=1}^J(\cdot)$ for the cross-firm average. The sample analogs of Moments~1--4 under Specification~M are:
+
+\paragraph{Moment 1 (preference):}
+\begin{equation}\label{eq:sm1}
+\hat m_1(\theta) = \frac{1}{J}\sum_{j=1}^J z_j^1\cdot(\delta_j - \eta\ln w_j).
+\end{equation}
+
+\paragraph{Moment 2 (screening FOC):}
+\begin{equation}\label{eq:sm2_M}
+\hat m_2^M(\theta) = \frac{1}{J}\sum_{j=1}^J z_j^2\cdot\Big[\ln(1-\alpha)+(1-\alpha)\gamma_0+\sigma_e\tilde q_j - \alpha\ln\hat{\tilde Q}_j^M(\sigma_e) - \alpha\ln L_j - \ln w_j\Big].
+\end{equation}
+
+\paragraph{Moment 3 ($A_j$-free):} Since revenue eliminates $A_j$, there is no structural residual and any function of observables can serve as an interaction variable (formally, any discrepancy is independent measurement error). Under Spec~M, where only $\sigma_e$ is unknown, $z_j=1$ suffices:
+\begin{equation}\label{eq:sm3_M}
+\hat m_3^M(\theta) = \frac{1}{J}\sum_{j=1}^J \Big[\sigma_e\tilde q_j - \ln\hat{\tilde Q}_j^M(\sigma_e) - \ln w_j - \ln L_j + \ln(1-\alpha) + \ln R_j\Big].
+\end{equation}
+
+\paragraph{Moment 4 (TFP normalization):}
+\begin{equation}\label{eq:sm4_M}
+\hat m_4^M(\theta) = \frac{1}{J}\sum_{j=1}^J \Big[\ln(1-\alpha)+(1-\alpha)\gamma_0+\sigma_e\tilde q_j - \alpha\ln\hat{\tilde Q}_j^M(\sigma_e) - \alpha\ln L_j - \ln w_j\Big].
+\end{equation}
+
+\noindent Under Specification~A, replace $\sigma_e\tilde q_j$ with $\ln(\gamma_0+\sigma_e\tilde q_j)$ and $\ln\tilde Q_j^M(\sigma_e)$ with $\ln(\gamma_0+\sigma_e\hat{\tilde Q}_j^A)$ throughout Moments~2--4, and correspondingly in Moment~3. Explicitly:
+
+\paragraph{Moment 2 (Spec~A):}
+\begin{equation}\label{eq:sm2_A}
+\hat m_2^A(\theta) = \frac{1}{J}\sum_{j=1}^J z_j^2\cdot\Big[\ln(1-\alpha)+\ln(\gamma_0+\sigma_e\tilde q_j) - \alpha\ln(\gamma_0+\sigma_e\hat{\tilde Q}_j^A) - \alpha\ln L_j - \ln w_j\Big].
+\end{equation}
+
+\paragraph{Moment 3 (Spec~A):} Under Spec~A, both $\gamma_0$ and $\sigma_e$ are unknown, so we need two moment conditions. Since there is no structural residual, we are free to choose any interactions; $z_j \in \{1, \tilde q_j\}$ is a natural choice:
+\begin{equation}\label{eq:sm3_A}
+\hat m_3^A(\theta) = \frac{1}{J}\sum_{j=1}^J \begin{pmatrix} 1 \\ \tilde q_j\end{pmatrix}\cdot\Big[\ln(\gamma_0+\sigma_e\tilde q_j) - \ln(\gamma_0+\sigma_e\hat{\tilde Q}_j^A) - \ln w_j - \ln L_j + \ln(1-\alpha) + \ln R_j\Big].
+\end{equation}
+
+\paragraph{Moment 4 (Spec~A):}
+\begin{equation}\label{eq:sm4_A}
+\hat m_4^A(\theta) = \frac{1}{J}\sum_{j=1}^J \Big[\ln(1-\alpha)+\ln(\gamma_0+\sigma_e\tilde q_j) - \alpha\ln(\gamma_0+\sigma_e\hat{\tilde Q}_j^A) - \alpha\ln L_j - \ln w_j\Big].
+\end{equation}
+
+\noindent In both specifications, $\hat{\tilde Q}_j$ is computed from \eqref{eq:Qhat_A} or \eqref{eq:Qhat_M} using the micro-estimated $\theta_{\text{micro}}$ and the matched workers at firm~$j$.
+
+The stacked moment vector is
+\begin{equation}\label{eq:mhat}
+\hat m(\theta) = \begin{pmatrix} \hat m_1(\theta) \\ \hat m_2(\theta) \\ \hat m_3(\theta) \\ \hat m_4(\theta) \end{pmatrix},
+\end{equation}
+with $\hat m_2$--$\hat m_4$ chosen according to the specification. The weighting matrix $\hat W$ is positive definite; an initial choice is block-diagonal with blocks corresponding to each moment group, or a 2-step optimal GMM weighting matrix.
+
+
+\section{Estimation Variants}\label{sec:variants}
+
+Four variants along two dimensions: (1) MLE vs.\ GMM for the micro component, and (2) whether to search over $(\tilde q,\delta)$ jointly or concentrate out $\delta$. Note that $(\gamma_0,\sigma_e)$ enter only through the macro penalty $\hat m(\theta)$, not through the micro likelihood; they can be concentrated out or searched over separately.
+
+\subsection{Variant 1: MLE -- Search over $(\tilde q,\delta)$}
+
+\begin{equation}\label{eq:var1}
+\min_{\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta,\tilde q,\delta}\;-\sum_i \ln \sigma_{y_i}(v_i,d_i;\tilde\gamma,\tau,\tilde q,\delta) \;+\; \frac{1}{2}\hat m(\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta,\tilde q,\delta)'\hat W\,\hat m(\cdot)
+\end{equation}
+
+\subsection{Variant 2: MLE -- Concentrate out $\delta$}
+
+\begin{align}\label{eq:var2}
+&\min_{\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta,\tilde q}\;-\sum_i \ln \sigma_{y_i}(v_i,d_i;\tilde\gamma,\tau,\tilde q,\hat\delta(\tilde\gamma,\tau,\tilde q)) \;+\; \frac{1}{2}\hat m(\cdot)'\hat W\,\hat m(\cdot) \notag\\[6pt]
+&\text{where } \hat\delta(\tilde\gamma,\tau,\tilde q) \text{ solves the share-matching fixed point:}\notag\\
+&\qquad \frac{1}{N}\sum_i \mathbf{1}[y_i=j] = \frac{1}{N}\sum_i \sigma_j(v_i,d_i;\tilde\gamma,\tau,\tilde q,\hat\delta) \quad\forall\, j=1,\ldots,J,
+\end{align}
+with the BLP-style contraction mapping:
+\[
+\hat\delta_j^{(p+1)} \leftarrow \hat\delta_j^{(p)} + \ln\!\left(\frac{1}{N}\sum_i \mathbf{1}[y_i=j]\right) - \ln\!\left(\frac{1}{N}\sum_i \sigma_j(v_i,d_i;\tilde\gamma,\tau,\tilde q,\hat\delta^{(p)})\right).
+\]
+
+\openq{Does the contraction mapping remain valid with screening? Conditional on fixed $\tilde q$, the choice set structure is held fixed and $\sigma_j$ is monotone in $\delta_j$ within each choice set, so we believe it works. Needs verification.}
+
+\subsection{Variant 3: GMM -- Search over $(\tilde q,\delta)$}
+
+\begin{align}\label{eq:var3}
+\min_{\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta,\tilde q,\delta}\;\Bigg\|\sum_i\sum_{j=1}^J &\left(y_{ij} - \sigma_j(v_i,d_i;\theta_{\text{micro}})\right)\nabla_{\theta_{\text{micro}}}\ln\frac{\sigma_j(v_i,d_i;\theta_{\text{micro}}^{(1)})}{\sigma_0(v_i,d_i;\theta_{\text{micro}}^{(1)})}\Bigg\|^2_{\hat W_\mu} \;+\; \frac{1}{2}\hat m(\theta)'\hat W\,\hat m(\theta)
+\end{align}
+where $\theta_{\text{micro}}^{(1)}$ is a first-step estimate.
+
+\subsection{Variant 4: GMM -- Concentrate out $\delta$}
+
+\begin{equation}\label{eq:var4}
+\min_{\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta,\tilde q}\;\Bigg\|\sum_i\sum_{j=1}^J \left(y_{ij} - \sigma_j(v_i,d_i;\tilde\gamma,\tau,\tilde q,\hat\delta)\right)\nabla_{\theta_{\text{micro}}}\ln\frac{\sigma_j(\cdot;\theta_{\text{micro}}^{(1)})}{\sigma_0(\cdot;\theta_{\text{micro}}^{(1)})}\Bigg\|^2_{\hat W_\mu} \;+\; \frac{1}{2}\hat m(\cdot)'\hat W\,\hat m(\cdot)
+\end{equation}
+
+\openq{We do not consider concentrating out $\tilde q$. Inverting for $\tilde q$ is less standard than the BLP $\delta$-inversion and the ordering of firms by thresholds could switch, causing discontinuities.}
+
+\paragraph{Comparison.} Based on simulations (50 firms, 1000 workers): MLE is faster ($\sim$3s vs.\ $\sim$60s) and appears less biased. The share-inversion variants are attractive with multiple markets (parallel inversion by market). The standardized reparametrization has the additional advantage that the micro likelihood depends on fewer parameters ($\tilde\gamma, \tau, \{\tilde q_j, \delta_j\}$), with $(\gamma_0,\sigma_e,\alpha,\eta)$ entering only through the macro penalty.
+
+\section{Initialization}\label{sec:init}
+
+\paragraph{Step 0a: Skill parameters from wages.}
+Pool all matched workers across markets. Regress $\ln w_i$ on $(1, v_i)$:
+$\gamma_0^0 = \hat\beta_0$, $\sigma_e^0 = \sqrt{\text{Var}(\hat\varepsilon)}$,
+$\tilde\gamma^0 = \hat\beta_1 / \sigma_e^0$.
+
+\paragraph{Step 0b: Firm average skill.}
+For each firm $j$ in market $m$, compute
+$\hat Q_j = \frac{1}{L_j}\sum_{i: y_i = j} \exp(\gamma_0^0 + \sigma_e^0 \tilde\gamma^0 v_i)$.
+
+\paragraph{Step 0c: Production function (2SLS).}
+Pool all firms. Regress $\ln R_j$ on $\ln(\hat Q_j L_j)$ instrumented with $(1, z_j^2)$.
+The coefficient estimates $(1-\alpha)$; set $\alpha^0 = 1 - \hat\beta$. Clamp to $(0,1)$ or default $0.25$.
+
+\paragraph{Step 0d: Screening thresholds.}
+From the screening FOC: $\ln\bar q_j^0 = \ln w_j + \ln \hat Q_j + \ln L_j - \ln R_j - \ln(1-\alpha^0)$.
+Standardize: $\tilde q_j^0 = (\ln\bar q_j^0 - \gamma_0^0)/\sigma_e^0$.
+
+\paragraph{Step 0e: Naive preference parameters.}
+Standard logit ignoring screening (all firms in every choice set) per market.
+Pool $\tau$ as $N$-weighted average across markets. This identifies $\tau^0$ and $\delta_j^0$.
+
+\paragraph{Step 0f: Wage equation (2SLS).}
+Pool all firms. Regress $\delta_j^0$ on $\ln w_j$ instrumented with $(1, z_j^1)$.
+The coefficient is $\eta^0$.
+
+
+\section{Weighting Matrix}\label{sec:weighting}
+
+\paragraph{Initial choice.} $\hat W = (\bar B'\bar B)^{-1}$ where $\bar B$ is the $\bar J\times d_b$ matrix with rows $b_{jm}'$.
+
+\paragraph{Two-step optimal GMM.} (1) Estimate $\theta^{(1)}$ with initial $\hat W$. (2) Construct $\hat W^{\text{opt}}$ from residuals. (3) Re-estimate.
+
+\paragraph{Scaling.} The $\frac{1}{2}$ in the GMM penalty (Grieco et al.\ eq.\ (9)) affects relative weight on $\log\hat L$ vs.\ $\hat\chi$ and the conformance property.
+
+\openq{Single weighting matrix $\hat W$ for stacked moments, or block-diagonal (separate weights for preference and screening moments)?}
+
+\openq{For the GMM interpretation (Variant 3), Grieco et al.\ show asymptotic equivalence requires $\hat W_L = (-\partial_{\psi\psi'}\log\hat L)^{-1}$. Feasible with $2J$ fixed effects?}
+
+
+\section{Multi-Market Extension}\label{sec:multimarket}
+
+With $M$ markets: $\theta = (\theta_G, (\theta_m)_{m=1}^M)$, $\theta_G=(\tilde\gamma,\tau,\gamma_0,\sigma_e,\alpha,\eta)$, $\theta_m = (\delta_{j_m},\tilde q_{j_m})_{j_m}$. Note that the micro likelihood for market $m$ depends on $\theta_m$ and $(\tilde\gamma,\tau)$ only; the remaining global parameters $(\gamma_0,\sigma_e,\alpha,\eta)$ enter only through the macro penalty.
+
+\subsection{MLE: Distributed Optimization}
+
+The likelihood decomposes: $-\ell(\theta) = -\sum_m \ell_m(\theta_G,\theta_m)$. Profile out $\theta_m$:
+\[
+\min_{\theta_G}\sum_{m=1}^M\min_{\theta_m} -\ell_m(\theta_G,\theta_m).
+\]
+By the envelope theorem: $\nabla_{\theta_G}\tilde\ell(\theta_G) = \sum_m \partial_{\theta_G}\ell_m\big|_{\theta_m=\hat\theta_m(\theta_G)}.$
+
+The profiled Hessian (Schur complement) is
+\[
+\tilde H_{GG} = \sum_m\left(\nabla^2_{\theta_G\theta_G'}\ell_m - (\nabla^2_{\theta_G\theta_m'}\ell_m)(\nabla^2_{\theta_m\theta_m'}\ell_m)^{-1}(\nabla^2_{\theta_m\theta_G'}\ell_m)\right).
+\]
+
+\paragraph{Per-step communication.} Each market-$m$ worker: (1) receives $\theta_G^{(t)}$; (2) solves inner problem for $\theta_m^{(t)}$; (3) returns $\ell_m^{(t)}$, $\nabla_{\theta_G}\ell_m$, and Hessian blocks.
+
+\subsection{Augmented-Lagrangian Formulation for the Hybrid Objective}\label{sec:auglag}
+
+The pure MLE decomposition above ignores the GMM penalty. For the full hybrid objective, the difficulty is that the MLE term is additive across markets but the quadratic GMM penalty is not. The augmented-Lagrangian reformulation below solves the exact hybrid objective in a distributed fashion, with no approximations to the target estimator. All approximations are purely numerical (finite solver tolerances, finite outer iterations).
+
+\subsubsection{Setup and Notation}
+
+Recall the parameter partition: $(\tau,\tilde\gamma)$ enter the MLE; $(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma)$ enter the GMM; $\tilde\gamma$ is shared. Market $m$'s local parameters are $\theta_m = (\delta_m,\tilde q_m)$. Let $D_m$ denote the microdata in market $m$, $N_m$ the number of firms, and define market weights
+\[
+\omega_m = \frac{N_m}{\sum_{j=1}^M N_j}.
+\]
+The market-level log-likelihood contribution is $\ell_m(\tau,\tilde\gamma,\delta_m,\tilde q_m;D_m)$ and the market-level moment contribution is $g_m(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma,\delta_m,\tilde q_m;D_m)$, stacking the sample analogs of Moments~1--4 from Section~\ref{sec:macro}. The aggregate moment is $\bar g = \sum_{m=1}^M \omega_m g_m$.
+
+The exact hybrid objective is
+\begin{equation}\label{eq:hybrid_exact}
+Q = \sum_{m=1}^M \ell_m(\tau,\tilde\gamma,\delta_m,\tilde q_m;D_m) + \frac{1}{2}\bar g'\,W\,\bar g.
+\end{equation}
+The distributed algorithm below targets a stationary point of exactly this objective.
+
+\subsubsection{Exact Constrained Reformulation}
+
+Introduce an auxiliary variable $\mu$ satisfying $\mu = \bar g$. Then \eqref{eq:hybrid_exact} is equivalent to
+\begin{equation}\label{eq:hybrid_constrained}
+\min_{\tau,\tilde\gamma,\alpha,\sigma_e,\eta,\gamma_0,\{\delta_m,\tilde q_m\},\mu}\;
+\sum_{m=1}^M \ell_m(\tau,\tilde\gamma,\delta_m,\tilde q_m;D_m) + \frac{1}{2}\mu'W\mu
+\end{equation}
+subject to $\mu - \sum_{m=1}^M \omega_m g_m(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma,\delta_m,\tilde q_m;D_m) = 0$. This is a re-expression, not an approximation.
+
+\subsubsection{Augmented Lagrangian}
+
+Let $\nu$ be the multiplier and $\rho>0$ the penalty parameter. The augmented Lagrangian is
+\begin{align}
+\mathcal A_\rho
+=&\; \sum_{m=1}^M \ell_m(\tau,\tilde\gamma,\delta_m,\tilde q_m;D_m) + \frac{1}{2}\mu'W\mu \notag\\
+&\; + \nu'\!\left(\mu - \sum_{m=1}^M \omega_m g_m\right) + \frac{\rho}{2}\left\|\mu - \sum_{m=1}^M \omega_m g_m\right\|^2.
+\label{eq:auglag}
+\end{align}
+Its role is purely computational. At convergence the constraint $\mu = \bar g$ holds, so a KKT point of \eqref{eq:auglag} corresponds to a stationary point of the original hybrid objective \eqref{eq:hybrid_exact}.
+
+\subsubsection{One Outer Iteration}\label{sec:outer_iter}
+
+Suppose the current values at iteration $k$ are $(\tau^k,\tilde\gamma^k,\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k)$, $(\delta_m^k,\tilde q_m^k)_{m=1}^M$, $\mu^k$, $\nu^k$, $\rho_k$. Define the current market moments $g_m^k = g_m(\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k,\tilde\gamma^k,\delta_m^k,\tilde q_m^k;D_m)$ and the aggregate $\bar g^k = \sum_m \omega_m g_m^k$.
+
+\paragraph{Step 1: Broadcast.} The coordinator sends to each worker $m$:
+\[
+(\tau^k,\tilde\gamma^k,\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k,\nu^k,\rho_k),
+\]
+and a market-specific residual target
+\begin{equation}\label{eq:cm}
+c_m^k = \mu^k - \bar g^k + \omega_m g_m^k.
+\end{equation}
+This can be computed from the previously cached $\bar g^k$ and $g_m^k$ without accessing microdata.
+
+\paragraph{Step 2: Market block update (parallel).} Holding all global and other-market variables fixed, worker $m$ solves the exact block subproblem
+\begin{align}
+(\delta_m^{k+1},\tilde q_m^{k+1}) \approx \arg\min_{\delta_m,\tilde q_m}\;\Bigg\{
+&\;\ell_m(\tau^k,\tilde\gamma^k,\delta_m,\tilde q_m;D_m) \notag\\
+&\;-\omega_m\nu^{k\prime} g_m(\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k,\tilde\gamma^k,\delta_m,\tilde q_m;D_m) \notag\\
+&\;+ \frac{\rho_k}{2}\left\|c_m^k - \omega_m g_m(\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k,\tilde\gamma^k,\delta_m,\tilde q_m;D_m)\right\|^2
+\Bigg\}.
+\label{eq:market_subproblem}
+\end{align}
+This is the exact market block of the augmented Lagrangian. Each worker uses only its own microdata $D_m$.
+
+\paragraph{Step 2 return values.} After solving, worker $m$ returns:
+\begin{enumerate}[label=(\roman*)]
+\item $\delta_m^{k+1}$, $\tilde q_m^{k+1}$;
+\item $g_m^{k+1,k} = g_m(\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k,\tilde\gamma^k,\delta_m^{k+1},\tilde q_m^{k+1};D_m)$;
+\item $\ell_m^{k+1,k} = \ell_m(\tau^k,\tilde\gamma^k,\delta_m^{k+1},\tilde q_m^{k+1};D_m)$.
+\end{enumerate}
+
+\paragraph{Step 3: Intermediate $\mu$ update (closed form).} The coordinator aggregates $\bar g^{k+1,k} = \sum_m \omega_m g_m^{k+1,k}$ and updates
+\begin{equation}\label{eq:mu_mid}
+\mu^{k+\frac{1}{2}} = (W+\rho_k I)^{-1}(\rho_k \bar g^{k+1,k} - \nu^k).
+\end{equation}
+
+\paragraph{Step 4: Global block update (callback-based).} Holding $(\delta_m^{k+1},\tilde q_m^{k+1})$ fixed for all $m$, solve the concentrated global problem
+\begin{equation}\label{eq:global_problem}
+(\tau^{k+1},\tilde\gamma^{k+1},\alpha^{k+1},\sigma_e^{k+1},\eta^{k+1},\gamma_0^{k+1}) \approx \arg\min_{\tau,\tilde\gamma,\alpha,\sigma_e,\eta,\gamma_0}\; \Phi_k(\tau,\tilde\gamma,\alpha,\sigma_e,\eta,\gamma_0),
+\end{equation}
+where
+\begin{align}
+\Phi_k &= \sum_{m=1}^M \ell_m(\tau,\tilde\gamma,\delta_m^{k+1},\tilde q_m^{k+1};D_m) + \frac{1}{2}\mu^*{}'W\mu^* + \nu^{k\prime}(\mu^*-\bar g) + \frac{\rho_k}{2}\|\mu^*-\bar g\|^2,
+\label{eq:Phi}
+\end{align}
+with $\bar g = \sum_m \omega_m g_m(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma,\delta_m^{k+1},\tilde q_m^{k+1};D_m)$ and $\mu^* = (W+\rho_k I)^{-1}(\rho_k\bar g - \nu^k)$ concentrated out analytically.
+
+This is a 6-dimensional unconstrained problem. The coordinator hands it to an off-the-shelf solver (Section~\ref{sec:global_solver}). Each function/gradient evaluation by the solver triggers a \emph{worker callback} (Section~\ref{sec:callbacks}).
+
+\paragraph{Step 5: Final $\mu$ and multiplier update.} After the global solve, each worker evaluates $g_m^{k+1}$ and $\ell_m^{k+1}$ at the accepted global point (one final callback). The coordinator aggregates $\bar g^{k+1} = \sum_m \omega_m g_m^{k+1}$ and updates
+\begin{equation}\label{eq:mu_final}
+\mu^{k+1} = (W+\rho_k I)^{-1}(\rho_k\bar g^{k+1}-\nu^k),
+\end{equation}
+\begin{equation}\label{eq:nu_update}
+\nu^{k+1} = \nu^k + \rho_k(\mu^{k+1}-\bar g^{k+1}).
+\end{equation}
+
+\paragraph{Step 6: Penalty update and convergence check.} Update $\rho_k$ (Section~\ref{sec:penalty}). Stop when the primal residual $\|\mu^{k+1}-\bar g^{k+1}\|$, dual residual $\rho_k\|\bar g^{k+1}-\bar g^k\|$, and parameter changes are all small (Section~\ref{sec:convergence}).
+
+\subsubsection{Worker Callbacks During the Global Solve}\label{sec:callbacks}
+
+For each trial global point $(\tau,\tilde\gamma,\alpha,\sigma_e,\eta,\gamma_0)$ proposed by the coordinator's solver:
+\begin{enumerate}[label=\arabic*.]
+\item The coordinator broadcasts the trial point to all workers.
+\item Each worker $m$ holds $(\delta_m^{k+1},\tilde q_m^{k+1})$ fixed and computes, using its own microdata:
+\begin{align*}
+L_m &= \ell_m(\tau,\tilde\gamma,\delta_m^{k+1},\tilde q_m^{k+1};D_m), \\
+G_m &= g_m(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma,\delta_m^{k+1},\tilde q_m^{k+1};D_m).
+\end{align*}
+If the solver requires gradients, the worker also computes:
+\begin{align*}
+S_m &= \nabla_{(\tau,\tilde\gamma)}\ell_m\big|_{\delta_m^{k+1},\tilde q_m^{k+1}}, \\
+J_m &= \nabla_{(\alpha,\sigma_e,\eta,\gamma_0,\tilde\gamma)}g_m\big|_{\delta_m^{k+1},\tilde q_m^{k+1}}.
+\end{align*}
+\item Worker $m$ returns $(L_m, G_m, S_m, J_m)$ to the coordinator.
+\item The coordinator aggregates:
+\[
+L = \sum_m L_m, \quad \bar g = \sum_m \omega_m G_m, \quad S = \sum_m S_m, \quad \bar J = \sum_m \omega_m J_m,
+\]
+computes $\mu^* = (W+\rho_k I)^{-1}(\rho_k\bar g - \nu^k)$, evaluates $\Phi_k$ and its gradient, and returns these to the solver.
+\end{enumerate}
+
+This design has two key properties. First, every function/gradient evaluation is \emph{exact} --- there are no quadratic approximations to the likelihood or moment functions. The solver sees exact values and gradients of $\Phi_k$, so it can converge to an accurate solution of the global subproblem. Second, no machine ever holds more than one market's microdata. The coordinator works exclusively with the low-dimensional aggregates $(L, \bar g, S, \bar J)$.
+
+\paragraph{Why all parameters can be updated exactly.} In the previous architecture, parameters like $\sigma_e$ under Spec~M required worker-level computation because $\tilde Q_j^M(\sigma_e)$ involves $E[\exp(\sigma_e\tilde e_i)\mid \tilde e_i\in[a_{ik},b_{ik}]]$, which is not separable from the worker-specific truncation bounds $(a_{ik},b_{ik})$. The callback design avoids this problem entirely: the worker evaluates $g_m$ at the trial $\sigma_e$ by iterating over its matched workers (a forward pass, not an optimization), and returns only the low-dimensional result. The coordinator never needs to know the truncation bounds.
+
+\paragraph{Why market derivatives are not missing.} When the coordinator solves for the global parameters, the local parameters $(\delta_m^{k+1},\tilde q_m^{k+1})$ are held fixed. The coordinator differentiates only with respect to $(\tau,\tilde\gamma,\alpha,\sigma_e,\eta,\gamma_0)$. The derivatives with respect to market-specific parameters were already handled in the market block solve (Step~2).
+
+\subsubsection{What Is Exact and What Is Approximate}
+
+The following are exact: the original hybrid objective \eqref{eq:hybrid_exact}; the constrained reformulation; the augmented Lagrangian \eqref{eq:auglag}; each block subproblem conditional on the other blocks; the closed-form update for $\mu$; the multiplier update for $\nu$; and every function/gradient evaluation in the worker callbacks.
+
+The following are numerical approximations (inherent to any iterative algorithm, not modifications of the estimator): solving each block subproblem to finite tolerance; using a finite number of outer iterations; the heuristic residual-balancing rule for $\rho$.
+
+\subsubsection{Implementation Specifications}\label{sec:implementation}
+
+\paragraph{Market subproblem solver.}\label{sec:market_solver} Solve \eqref{eq:market_subproblem} using L-BFGS via \texttt{scipy.optimize.minimize(method='L-BFGS-B')} or \texttt{jaxopt.LBFGS}, searching jointly over $(\delta_m,\tilde q_m)$. Warm-start from $(\delta_m^k,\tilde q_m^k)$. Gradients are computed by JAX reverse-mode autodiff through the combined objective (likelihood plus penalty terms). The BLP contraction for $\delta_m$ can optionally be used to get a good starting point before switching to L-BFGS for the joint problem including the penalty terms.
+
+Convergence tolerance: gradient norm $\leq 10^{-6}$. Maximum inner iterations: 200. If the subproblem fails to converge, return the best iterate found and flag it; the outer loop is robust to moderately inexact block solves.
+
+\paragraph{Global solver.}\label{sec:global_solver} Solve \eqref{eq:global_problem} using \texttt{scipy.optimize.minimize(method='L-BFGS-B')} with parameter bounds where appropriate (e.g., $\alpha\in(0,1)$, $\sigma_e>0$). Each function/gradient evaluation calls the worker callback (Section~\ref{sec:callbacks}). Warm-start from $(\tau^k,\tilde\gamma^k,\alpha^k,\sigma_e^k,\eta^k,\gamma_0^k)$.
+
+Convergence tolerance: gradient norm $\leq 10^{-5}$. Maximum solver iterations: 100. In practice, L-BFGS on a 6-dimensional smooth problem converges in 20--50 function evaluations.
+
+\paragraph{Closed-form updates.} The variable $\mu$ is always updated by its closed-form expression \eqref{eq:mu_final}, never by numerical optimization. Likewise $\nu$ is updated by the multiplier formula \eqref{eq:nu_update}, not by optimization. The matrix inversion $(W+\rho_k I)^{-1}$ is $d_g\times d_g$ (e.g., $8\times 8$) and negligible.
+
+\paragraph{Penalty parameter.}\label{sec:penalty} Initialize
+\[
+\rho_0 = \frac{\operatorname{tr}(W)}{\dim(\mu)}.
+\]
+This normalizes the penalty to the scale of the moment conditions. Update using the residual-balancing rule:
+\[
+\rho_{k+1} = \begin{cases}
+2\rho_k & \text{if } \|r^{k+1}\| > 10\,d^{k+1}, \\
+\rho_k/2 & \text{if } d^{k+1} > 10\,\|r^{k+1}\|, \\
+\rho_k & \text{otherwise},
+\end{cases}
+\]
+where $r^{k+1} = \mu^{k+1}-\bar g^{k+1}$ is the primal residual and $d^{k+1} = \rho_k\|\bar g^{k+1}-\bar g^k\|$ is the dual residual. Cap $\rho_k \leq 10^4$ to avoid ill-conditioning.
+
+\paragraph{Convergence criteria.}\label{sec:convergence} Stop when all of:
+\begin{enumerate}[label=(\roman*)]
+\item primal residual: $\|r^{k+1}\| / \max(1,\|\mu^{k+1}\|) < 10^{-4}$;
+\item dual residual: $d^{k+1}/\max(1,\|\nu^{k+1}\|) < 10^{-4}$;
+\item parameter change: $\|\theta^{k+1}-\theta^k\|/\max(1,\|\theta^{k+1}\|) < 10^{-5}$.
+\end{enumerate}
+Maximum outer iterations: 200.
+
+\paragraph{Initialization.}
+\begin{enumerate}[label=(\roman*)]
+\item Run the pure micro MLE (ignoring the GMM penalty) to obtain initial $(\tau^0,\tilde\gamma^0,\{\delta_m^0,\tilde q_m^0\}_{m=1}^M)$, using the initialization in Section~\ref{sec:init}. This can be distributed across markets via the profiled MLE in Section~\ref{sec:multimarket}.
+\item Initialize $(\alpha^0,\sigma_e^0,\eta^0,\gamma_0^0)$ from the production-side moments conditional on the MLE initialization: regress $\ln R_j$ on $\ln(\hat{\tilde Q}_j L_j)$ to get $\alpha^0$; use the $A_j$-free moment with $z_j=1$ to get $\sigma_e^0$; regress $\delta_j^0$ on $\ln w_j$ to get $\eta^0$; set $\gamma_0^0$ from the TFP normalization \eqref{eq:gamma0_M}.
+\item Set $\nu^0 = 0$.
+\item Set $\mu^0 = (W+\rho_0 I)^{-1}(\rho_0\bar g^0 - \nu^0) = (W+\rho_0 I)^{-1}(\rho_0\bar g^0)$.
+\end{enumerate}
+
+\paragraph{Weighting matrix.} $W$ is fixed throughout the augmented-Lagrangian iterations. If a two-step efficient GMM estimator is desired, run the full algorithm to convergence, construct $\hat W^{\text{opt}}$ from the residuals at $\hat\theta$, and re-run.
+
+\subsubsection{Communication Architecture}\label{sec:communication}
+
+\paragraph{Memory model.} Each worker holds only its own market's microdata $D_m$ in memory. The coordinator holds only the current global parameters, the aggregate moment $\bar g$, and each market's moment contribution $g_m$ ($d_g$ floats per market). It never accesses raw microdata.
+
+\paragraph{Communication per outer iteration.} There are two phases of communication:
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Market block (Steps 1--2):} One broadcast from coordinator, one return per worker. Each worker returns $(\delta_m^{k+1}, \tilde q_m^{k+1}, g_m^{k+1,k}, \ell_m^{k+1,k})$.
+\item \emph{Global block (Step 4):} Multiple synchronous round-trips, one per function/gradient evaluation by the solver. Each round-trip: coordinator broadcasts 6 floats (trial global point), each worker returns $(L_m, G_m, S_m, J_m)$ --- totaling $1 + d_g + 2 + 5d_g = 6d_g+3$ floats per worker. With $d_g=8$: 51 floats per worker per round-trip.
+\end{enumerate}
+With 20--50 solver iterations for the global block, the total per outer iteration is 20--50 synchronous round-trips. The binding cost is network latency, not bandwidth.
+
+\subsubsection{Potential Challenges and Tuning}\label{sec:challenges}
+
+\paragraph{Global solve latency.} Each L-BFGS iteration in the global solve requires a synchronous round-trip to all workers. On a shared cluster with low-latency interconnect this is fast (the per-worker computation is a forward pass, not an optimization). Across data centers, latency could accumulate. Mitigation: (i) use a solver with fewer iterations (e.g., Newton-CG if Hessian-vector products are cheap); (ii) accept a loose tolerance for the global solve in early outer iterations and tighten as convergence approaches; (iii) batch multiple trial points per round-trip if the solver supports it.
+
+\paragraph{Market subproblem conditioning.} When $\rho_k$ is large, the quadratic penalty term dominates the likelihood in \eqref{eq:market_subproblem}, potentially making the subproblem ill-conditioned. The cap $\rho_k \leq 10^4$ mitigates this. If convergence stalls at large $\rho$, switch to a more robust solver (e.g., trust-region Newton) for the market subproblem. Monitor the number of inner iterations; if it grows rapidly with $\rho$, the penalty is too aggressive.
+
+\paragraph{Slow outer convergence.} If the primal residual $\|\mu-\bar g\|$ decreases slowly, possible causes include: (i) $\rho_0$ too small (the penalty is not pushing hard enough toward feasibility) --- try $\rho_0 = 10$ or $\rho_0 = 100$; (ii) the global solve is too loose --- tighten the gradient tolerance; (iii) the market subproblems are too inexact --- tighten the inner tolerance. A diagnostic: if the primal residual oscillates, $\rho$ is changing too rapidly; freeze $\rho$ for 5--10 iterations.
+
+\paragraph{Multiple inner sweeps.} The algorithm as described performs one market sweep and one global solve per outer iteration. If outer convergence is slow, performing 2--3 market sweeps before the global solve (or vice versa) can help. This is closer to textbook augmented-Lagrangian theory, which allows multiple block-coordinate sweeps per multiplier update.
+
+\paragraph{Sensitivity to initialization.} The hybrid objective \eqref{eq:hybrid_exact} may have local optima. The MLE-first initialization (Section~\ref{sec:implementation}) is designed to start near the global optimum of the likelihood, so the GMM penalty is a refinement rather than a large correction. If the GMM moments pull parameters far from the MLE initialization, this suggests either a misspecified model or weak instruments. Diagnostic: compare the MLE-only and hybrid estimates; large discrepancies warrant investigation.
+
+\paragraph{Straggler markets.} The synchronous round-trip design means the slowest worker determines the iteration time. If markets have very different sizes ($N_m$ varies by orders of magnitude), consider (i) assigning multiple small markets to one worker; (ii) using asynchronous updates for the market block (though this changes the convergence theory); (iii) profiling worker computation time and rebalancing.
+
+\paragraph{Numerical stability of $\tilde Q_j^M(\sigma_e)$.} Under Specification~M, the truncated MGF $\exp(\sigma_e^2/2)\frac{\Phi(b-\sigma_e)-\Phi(a-\sigma_e)}{\Phi(b)-\Phi(a)}$ can overflow for large $\sigma_e$ or extreme truncation bounds. Implement in log-space: compute $\log\tilde Q_j^M$ as a log-sum-exp over worker contributions. Use \texttt{jax.scipy.special.log\_ndtr} for numerically stable $\log\Phi$.
+
+\subsection{GMM: Distributed Computation}
+
+The GMM objective cannot be profiled (quadratic form in a sum across markets):
+$Q(\theta) = (\sum_m S_m(\theta))' W (\sum_m S_m(\theta))$,
+but gradients can be distributed:
+\begin{align*}
+\nabla_{\theta_m}Q &= 2(\nabla_{\theta_m}S_m)'\!(W\textstyle\sum_m S_m), &
+\nabla_{\theta_G}Q &= 2(\textstyle\sum_m\nabla_{\theta_G}S_m)'\!(W\textstyle\sum_m S_m).
+\end{align*}
+
+\openq{Communication protocol: (i) two-round (workers send $S_m$, center broadcasts $W\sum S_m$, workers return Jacobian-vector products) vs.\ (ii) one-round (workers send $S_m$ and full Jacobians)?}
+
+
+\section{Standard Errors and Inference}
+
+Following Grieco et al.\ (Theorem~2), $\hat\Gamma_\theta^{-1}(\hat\theta-\theta^*) \xrightarrow{d} N(0,\mathcal V_\theta)$,
+where $\hat\Gamma_\theta = \hat\Omega_{\theta\theta} - \hat\Omega_{\theta\pi}\hat\Omega_{\pi\pi}^{-1}\hat\Omega_{\pi\theta}$. If $\hat W$ is chosen as in their Section~4.6, standard errors come from the inverse Hessian of \eqref{eq:combined}; otherwise use the sandwich estimator.
+
+\openq{Incidental parameters with $2J$ fixed effects? Grieco et al.\ accommodate growing $J$ via $M\to\infty$. In a single market, need $N\to\infty$ with $J$ fixed.}
+
+
+\section{Computational Notes}
+
+\begin{itemize}
+    \item Code in Python/JAX for autodiff and GPU acceleration.
+    \item Memory: pre-computing $N\times J$ distance matrices requires $\sim$8GB per market at $N_m\sim 10^6$, $J_m\sim 10^3$.
+    \item Profiling out $\delta$ halves the outer parameters (from $2J$ to $J$) at the cost of running the contraction per evaluation.
+    \item The standardized reparametrization separates the micro likelihood (depends on $\tilde\gamma, \tau, \{\tilde q_j,\delta_j\}$) from the macro penalty (additionally depends on $\gamma_0, \sigma_e, \alpha, \eta$). This enables a natural two-step procedure: estimate micro parameters first, then recover $(\gamma_0,\sigma_e)$ from the production moments.
+\end{itemize}
+
+\openq{Implicit function theorem for the gradient of the profiled objective vs.\ letting JAX differentiate through the fixed-point iteration?}
+
+\bigskip
+\noindent\textbf{Notation concordance with rcly\_notes.} The notes use different symbols: $\varphi\to\gamma_1$,\; $x_i\to v_i$,\; $a_i\to e_i$,\; $F_a\to G_e$,\; $c_j\to\bar q_j$,\; $V_j\to\delta_j$,\; $\gamma_{\text{notes}}\to\tau$,\; $\beta\to\alpha$,\; $S_j\to Q_j$. In the standardized reparametrization: $\tilde q_j = (\bar q_j - \gamma_0)/\sigma_e$ (Spec.~A) or $(\ln\bar q_j - \gamma_0)/\sigma_e$ (Spec.~M), $\tilde\gamma = \gamma_1/\sigma_e$.
+
+
+\end{document}

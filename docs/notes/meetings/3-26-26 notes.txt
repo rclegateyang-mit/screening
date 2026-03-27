@@ -1,0 +1,15 @@
+* skill proxy using continuous values without any coworker stuff or any wage information
+1. Location and demographics to impute education
+2. More detailed information with industry
+
+Diagnostics 
+- leave out education
+- conditional on brad and nikhil working at the same firm with the same predicted index, then they should have similar wages -- that suggests that they get similar amenities 
+
+Brad: SAS EHF
+- EHF is smaller, long format
+- metadata to decide which rows to pull, saves memory 
+- distance, imputed skill 
+- firm level: total revenue, capital and materials for manufacturing; hard part is linking to firm side; look for coauthor's code 
+- visit in person to work
+- decide how to discuss results safely

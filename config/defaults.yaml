@@ -1,0 +1,55 @@
+# Canonical simulation parameters for worker screening model.
+# All data generation and estimation scripts should use these values
+# unless explicitly overridden for a specific experiment.
+#
+# This file is the single source of truth for default parameter values.
+# Pointed to from CLAUDE.md so every session has access.
+
+# --- Model parameters ---
+tau: 0.4            # distance decay in worker utility
+alpha: 0.2          # labor share in production (1-alpha = capital/screening share)
+eta: 5.0            # wage coefficient in utility (eta * log(w))
+
+# --- Worker skill distribution (log-additive) ---
+# ln q_i = gamma0 + gamma1 * v_i + e_i
+# v_i ~ N(mu_v, sigma_v^2)   (observable component, stored as x_skill in CSV)
+# e_i ~ N(0, sigma_e^2)      (unobservable component)
+# E[ln q] = gamma0 + gamma1*mu_v = 3.19  =>  E[q] ≈ 24 ($10K units)
+gamma0: -7.0         # intercept in ln q = gamma0 + gamma1*v + e
+gamma1: 0.94         # loading on observable skill v
+mu_v: 10.84          # mean of observable component v
+sigma_v: 0.25        # std dev of observable component v
+sigma_e: 0.135       # std dev of unobservable component e (N(0, sigma_e^2))
+
+# --- Firm heterogeneity ---
+sigma_A: 0.37       # std dev of firm productivity A
+sigma_xi: 0.35      # std dev of firm amenity xi
+rho_Axi: 0.44       # correlation between A and xi
+mu_xi: 0.0          # mean of xi
+sigma_z1: 0.2       # std dev of observed TFP shifter (instrument for A)
+sigma_z2: 0.175     # std dev of observed amenity shifter (instrument for xi)
+
+# --- Worker location ---
+worker_loc_mode: cartesian
+worker_mu_x: 0.0
+worker_mu_y: 0.0
+worker_sigma_x: 5.0
+worker_sigma_y: 4.0
+
+# --- Skill-location correlation ---
+rho_x_skill_ell_x: 0.3
+rho_x_skill_ell_y: 0.3
+
+# --- Quadrature ---
+quad_n_x: 25
+quad_n_y: 25
+
+# --- Data generation defaults ---
+N_workers: 2000     # workers per market
+J: 100              # firms per market
+M: 1000             # number of markets
+seed: 12345
+conduct_mode: 1     # 1=prep, 2=equilibrium solve
+
+# --- Firm filtering (post-equilibrium) ---
+drop_below_n: 5     # drop firms with fewer than this many matched workers

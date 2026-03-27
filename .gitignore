@@ -1,6 +1,7 @@
-# Data and output folders
+# Data and output (large/generated files)
 data/
 output/
+archive/
 
 # Python cache
 __pycache__/
@@ -27,7 +28,16 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+.claude/
 
 # Temporary files
 *.tmp
 *.temp
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.Rhistory
