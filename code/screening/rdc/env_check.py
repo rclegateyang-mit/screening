@@ -108,7 +108,7 @@ def run_checks(save_path: str | None = None) -> None:
 
     # ---- REQUIRED PACKAGES ----
     out(f"\n[3] REQUIRED PACKAGES")
-    required = ["numpy", "scipy", "pandas", "sklearn", "matplotlib", "statsmodels"]
+    required = ["numpy", "scipy", "pandas", "sklearn", "xgboost"]
     for pkg in required:
         display = "scikit-learn" if pkg == "sklearn" else pkg
         ver = _try_import(pkg)
@@ -118,32 +118,28 @@ def run_checks(save_path: str | None = None) -> None:
     # ---- OPTIONAL PACKAGES ----
     out(f"\n[4] OPTIONAL PACKAGES (may not be installed)")
     optional = {
-        "jax": "JAX (autodiff) — use scipy fallback if missing",
-        "jaxlib": "JAX backend",
-        "mpi4py": "MPI — use multiprocessing if missing",
-        "jaxopt": "JAX optimizers",
-        "xgboost": "XGBoost (alternative to sklearn GBT)",
-        "lightgbm": "LightGBM (alternative to sklearn GBT)",
+        "matplotlib": "plotting",
+        "statsmodels": "statistical models",
+        "lightgbm": "alternative GBT (not currently used)",
     }
     for pkg, desc in optional.items():
         ver = _try_import(pkg)
         out(f"  {pkg:20s} {ver:30s} — {desc}")
 
-    # ---- sklearn detail ----
-    out(f"\n[5] SCIKIT-LEARN DETAIL")
+    # ---- XGBOOST detail ----
+    out(f"\n[5] XGBOOST DETAIL")
     try:
-        import sklearn
-        ver = sklearn.__version__
-        major, minor = int(ver.split(".")[0]), int(ver.split(".")[1])
-        out(f"  Version: {ver}")
-        if major >= 1 or (major == 0 and minor >= 24):
-            out(f"  HistGradientBoosting: AVAILABLE (fast histogram-based GBT for large data)")
-        else:
-            out(f"  HistGradientBoosting: NOT AVAILABLE (sklearn < 0.24)")
-            out(f"  -> GradientBoostingRegressor works but is MUCH SLOWER on 150M rows")
-            out(f"  -> Consider requesting sklearn >= 1.0 from your RDCA")
-    except Exception:
-        out(f"  (sklearn not importable — see section 3)")
+        import xgboost as xgb
+        out(f"  Version: {xgb.__version__}")
+        try:
+            m = xgb.XGBRegressor(n_estimators=2, tree_method="hist")
+            out(f"  XGBRegressor with tree_method=hist: AVAILABLE")
+        except Exception as e:
+            out(f"  XGBRegressor instantiation failed: {e}")
+    except ImportError:
+        out(f"  xgboost NOT IMPORTABLE — see section 3")
+        out(f"  -> Try a different conda env (e.g. py3cf): conda env list")
+        out(f"  -> Or request xgboost installation from your RDCA")
 
     # ---- PBS PRO ----
     out(f"\n[6] PBS PRO (job scheduler)")
@@ -154,22 +150,17 @@ def run_checks(save_path: str | None = None) -> None:
 
     # ---- PROJECT PATHS ----
     out(f"\n[7] PROJECT PATHS")
-    data_dir = os.environ.get("SCREENING_DATA_DIR", "(not set)")
-    output_dir = os.environ.get("SCREENING_OUTPUT_DIR", "(not set)")
-    out(f"  SCREENING_DATA_DIR:   {data_dir}")
-    out(f"  SCREENING_OUTPUT_DIR: {output_dir}")
     out(f"  Working directory:    {os.getcwd()}")
+    out(f"  PYTHONPATH:           {os.environ.get('PYTHONPATH', '(not set)')}")
 
-    # Check if screening package is importable
+    # Check if screening.rdc package is importable (the deployed package)
     try:
-        import screening
-        out(f"  screening package:    {screening.PACKAGE_ROOT}")
-        out(f"  data_dir resolved:    {screening.get_data_dir()}")
-        out(f"  output_dir resolved:  {screening.get_output_dir()}")
-    except ImportError:
-        out(f"  screening package:    NOT IMPORTABLE")
-        out(f"  -> Make sure PYTHONPATH includes the code/ directory")
-        out(f"  -> Example: cd /projects/<project_id>/programs && export PYTHONPATH=.")
+        from screening.rdc import helpers  # noqa: F401
+        out(f"  screening.rdc:        IMPORTABLE")
+    except ImportError as e:
+        out(f"  screening.rdc:        NOT IMPORTABLE ({e})")
+        out(f"  -> cd /projects/<project_id>/programs && export PYTHONPATH=.")
+        out(f"  -> screening/rdc/ folder must be in this directory")
 
     # Check for /projects/ directory (RDC-specific)
     projects = Path("/projects")
@@ -186,31 +177,23 @@ def run_checks(save_path: str | None = None) -> None:
     numpy_ver = _try_import("numpy")
     if numpy_ver == "NOT FOUND":
         out(f"  CRITICAL: numpy not found. Anaconda may not be activated.")
-        out(f"  -> Try: source activate base")
+        out(f"  -> source /apps/anaconda/bin/activate py3cf")
     else:
         out(f"  numpy {numpy_ver} — OK")
 
-    jax_ver = _try_import("jax")
-    if jax_ver == "NOT FOUND":
-        out(f"  JAX not found — estimation must use scipy fallback (expected)")
+    xgb_ver = _try_import("xgboost")
+    if xgb_ver == "NOT FOUND":
+        out(f"  CRITICAL: xgboost not found — required for education imputation.")
+        out(f"  -> Try a different conda env: conda env list")
+        out(f"  -> Or request from your RDCA")
     else:
-        out(f"  JAX {jax_ver} — available, can use JIT optimization")
-
-    mpi_ver = _try_import("mpi4py")
-    if mpi_ver == "NOT FOUND":
-        out(f"  MPI not found — use multiprocessing within a single PBS node (expected)")
-    else:
-        out(f"  mpi4py {mpi_ver} — available, can use distributed estimation")
+        out(f"  xgboost {xgb_ver} — OK")
 
     sklearn_ver = _try_import("sklearn")
-    if sklearn_ver != "NOT FOUND":
-        try:
-            from sklearn.ensemble import HistGradientBoostingRegressor  # noqa: F401
-            out(f"  HistGradientBoostingRegressor — AVAILABLE (use this for 150M obs)")
-        except ImportError:
-            out(f"  HistGradientBoostingRegressor — NOT AVAILABLE")
-            out(f"  -> For 150M obs, GradientBoostingRegressor will be very slow")
-            out(f"  -> Consider subsampling or requesting sklearn >= 1.0")
+    if sklearn_ver == "NOT FOUND":
+        out(f"  CRITICAL: scikit-learn not found — required for StratifiedKFold.")
+    else:
+        out(f"  scikit-learn {sklearn_ver} — OK")
 
     out(f"\n{'=' * 70}")
     out(f"Save this output for reference: python rdc/env_check.py --save report.txt")
