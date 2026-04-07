@@ -392,6 +392,8 @@ def run_outer_loop(
     compute_hessian: bool = True,
     method: str = "L-BFGS-B",
     verbose: bool = True,
+    freeze_tg: float | None = None,
+    freeze_tau: float | None = None,
 ) -> dict:
     """SPMD outer optimization loop.  All ranks must call this together.
 
@@ -436,6 +438,12 @@ def run_outer_loop(
             scipy_opts["gtol"] = outer_tol
             scipy_opts["ftol"] = 1e-15  # prevent premature convergence
             bounds = [(None, None)] * N_GLOBAL
+            if freeze_tau is not None:
+                z_tau_fixed = float(z_G[0])
+                bounds[0] = (z_tau_fixed, z_tau_fixed)
+            if freeze_tg is not None:
+                z_tg_fixed = float(z_G[1])
+                bounds[1] = (z_tg_fixed, z_tg_fixed)
 
             scipy_result = minimize(
                 fun, z_G.copy(), jac=jac_fn,

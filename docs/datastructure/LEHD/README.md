@@ -28,3 +28,9 @@ Base URL: https://lehd.ces.census.gov/data/lehd-snapshot-doc/S2024/
 | [employer_level_qwi.md](employer_level_qwi.md) | Full codebook for QWI_ZZ_SEINUNIT (Quarterly Workforce Indicators): all variable definitions including complete set of worker/job flow measures (b, e, m, f, a, s, h, r, etc.), fuzzed delta_ counterparts, earnings measures, establishment-level calculated rates, and all codebook value details | https://lehd.ces.census.gov/data/lehd-snapshot-doc/S2024/sections/employer_level/qwi.html |
 | [person_level_icf.md](person_level_icf.md) | Full codebooks for ICF_US, ICF_US_IMPLICATES_AGE_SEX_POB, ICF_US_IMPLICATES_EDUCATION, and ICF_US_IMPLICATES_RACE_ETHNICITY: variable definitions, sex/race/ethnicity/education code values, imputation flag codes, missing data rates by characteristic, and imputation system descriptions (CART, KDE, Stage A/B/C) | https://lehd.ces.census.gov/data/lehd-snapshot-doc/S2024/sections/person_level/icf.html |
 | [person_level_icfres.md](person_level_icfres.md) | Full codebooks for ICF_US_RESIDENCE_CPR (1999-2011, CPR-sourced) and ICF_US_RESIDENCE_RCF (2012+, RCF-sourced): variable definitions, flag_latlong and flag_rcf code values, geographic precision levels, and notes on CPR discontinuation and Connecticut COG county changes | https://lehd.ces.census.gov/data/lehd-snapshot-doc/S2024/sections/person_level/icfres.html |
+
+## Related Documentation
+
+- [Census RDC computing environment](../../notes/census_rdc_computing_environment.md) -- OS, software, PBS Pro, Python packages
+- [Census RDC disclosure rules](../../notes/census_rdc_disclosure_rules.md) -- output review, rounding, cell sizes, LEHD-specific rules
+- [Census RDC workflow guide](../../notes/census_rdc_workflow.md) -- code input, batch jobs, data conversion, disclosure preparation

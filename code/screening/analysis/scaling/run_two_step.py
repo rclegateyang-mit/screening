@@ -54,7 +54,7 @@ NJ_SCALING = [
     {"M": 100, "N": 10000, "J": 100},
 ]
 
-MAX_CORES = 72  # 75% of 96
+MAX_CORES = 48  # 50% of 96 (each JAX process uses ~2-3 effective cores)
 
 
 def _unique_configs(configs: List[dict]) -> List[dict]:
@@ -132,7 +132,7 @@ def generate_data(cfg: dict, seed: int = 12345):
     ], label=f"prep {_cfg_label(cfg)}", cwd=PROJ_ROOT, env_extra=data_env)
 
     # --- Stage 2: equilibrium ---
-    par = min(M, 48)
+    par = min(M, 30)
     _run([
         py, "-m", "screening.clean.02_solve_equilibrium",
         "--M", str(M), "--parallel_markets", str(par),
@@ -166,7 +166,7 @@ def run_mle(cfg: dict):
     est = d / "est"
     est.mkdir(parents=True, exist_ok=True)
     M = cfg["M"]
-    n_ranks = min(M, 48)
+    n_ranks = min(M, 20)
 
     cmd = [
         "mpirun", "--oversubscribe", "-np", str(n_ranks),

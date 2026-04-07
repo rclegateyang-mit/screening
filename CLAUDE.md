@@ -76,6 +76,39 @@ code/screening/
 - Shared model utilities: `code/screening/analysis/lib/`
 - Outputs: always in `output/`, never in `data/`
 
+## Resource limits (96-core shared machine, target ≤ 50% CPU)
+
+Despite single-threaded env vars (`OMP_NUM_THREADS=1`, `intra_op_parallelism_threads=1`),
+JAX/XLA creates ~250 threads per process. During JIT compilation and early solver
+iterations, these threads consume **2-6 effective CPU cores per process**. After JIT
+caches warm up, steady-state usage drops to ~1-2 cores/process.
+
+**Max parallelism per task type:**
+
+| Task | Flag / command | Max P | Eff. cores/proc | Formula |
+|------|---------------|-------|-----------------|---------|
+| Distributed MLE | `mpirun -np P` | **20** | ~2.5 (sustained) | `min(M, 20)` |
+| Equilibrium solver | `--parallel_markets P` | **30** | ~2-4 (peak) | `min(M, 30)` |
+| Profiled tg scan | runs on rank 0 | 1 | ~2-4 (JIT bursts) | single process |
+| GMM from MLE | single process | 1 | ~1-2 | single process |
+
+**Rules:**
+- Use the formulas above; never exceed the Max P column.
+- Do not run two parallel tasks simultaneously (e.g., MLE + equilibrium).
+- Load average above **70** is a warning; above **90** → kill immediately.
+- When in doubt, start with fewer ranks and scale up.
+
+## Census RDC
+
+For tasks involving the Census RDC server (writing code to run there, PBS jobs, disclosure output, LEHD data), read these first:
+
+- `docs/notes/census_rdc_computing_environment.md` — OS, PBS Pro, available packages, constraints
+- `docs/notes/census_rdc_disclosure_rules.md` — output rules, rounding, cell sizes, LEHD restrictions
+- `docs/notes/census_rdc_workflow.md` — batch jobs, data conversion, JAX fallback, session workflow
+- `docs/notes/census_rdc_harness_guide.md` — job harness usage (submit.py, env_check.py, helpers.py)
+- `docs/datastructure/LEHD/` — LEHD variable names, codebooks, education imputation methodology
+- `code/screening/rdc/` — job harness code (PBS script generation, disclosure utilities)
+
 ## Conventions
 
 - JAX with float64 (`jax_enable_x64`) throughout estimation code

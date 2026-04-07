@@ -106,17 +106,44 @@ The FAS_EIN enables firm age and size linkage. Formats include:
 | qtime | num | Quarter index (1985Q1=1) |
 | in_202 | bool | SEIN in QCEW (0/1) |
 | in_ui | bool | SEIN in UI wage data (0/1) |
-| empl_month1-3 | int32 | Monthly employment |
-| total_wages | float64 | Quarterly wages |
+| empl_month1-3 | int32 | Monthly employment (edited) |
+| empl_month1_flg-empl_month3_flg | char(1) | Employment source flags (see below) |
+| total_wages | float64 | Quarterly wages (edited) |
+| total_wages_flg | char(1) | Wages source flag (see below) |
+| best_emp1-3 | float64 | Best UI/202 monthly employment |
+| best_wages | float64 | Best UI/202 wages |
 | es_owner_code | char(1) | Ownership (1,2,3,5) |
-| geoid_2020 | char(15) | Census block geocode |
-| leg_state, leg_county | char | Current geography |
+| geoid_2020 | char(15) | Census block geocode: state(2)+county(3)+tract(6)+block(4) |
+| leg_state | char(2) | Current FIPS state |
+| leg_county | char(5) | Current county identifier |
+| leg_tract | char(6) | Current Census tract |
+| leg_blkgrp | char(1) | Current block group |
+| leg_block | char(4) | Census block |
 | leg_latitude, leg_longitude | float64 | Internal point (6 decimals) |
 | leg_geo_qual | uint8 | Geocoding quality (1-10) |
 | leg_cbsa | char(5) | Core-Based Statistical Area |
 | leg_cbsa_memi | char(1) | CBSA type (1=Metro, 2=Micro, 9=Non-metro) |
+| leg_wib | char(8) | Workforce Investment Board |
+| leg_ssccc | char(5) | State-county identifier |
 | sic1987fnl | char(6) | Final SIC code |
 | naics1997fnl through naics2022fnl | char(6) | NAICS codes by year |
+| ramp_sein | float64 | Ramp fuzz factor |
+| uniform_sein | float64 | Draw from uniform distribution |
+
+### Employment/Wage Source Flags
+
+| Code | Meaning |
+|------|---------|
+| R | Reported data |
+| E | Imputed worksite employment from parent record |
+| H | Hand-imputed |
+| W | Estimated from wage record |
+| C | Changed/re-reported |
+| M | Missing data |
+| L | Late reported |
+| P | Prorated from master |
+| K | Catastrophe imputation |
+| N | Zero-filled pending resolution |
 
 ## ECF_ZZ_SEIN Variable Definitions
 

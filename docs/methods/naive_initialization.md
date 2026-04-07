@@ -1,6 +1,6 @@
 # Naive Initialization Procedure
 
-Implementation: `code/estimation/naive_init.py` -> `compute_pooled_naive_init()`
+Implementation: `code/screening/analysis/lib/naive_init.py` -> `compute_pooled_naive_init()`
 
 ## Overview
 
@@ -56,22 +56,7 @@ The coefficient on ln(Q_j * L_j) is (1-alpha), so alpha = 1 - coefficient.
 Clamped to (0, 1); defaults to 0.25 if the 2SLS estimate falls
 outside this range.
 
-## Step 0d: Screening thresholds
-
-**Data**: Per-market firm observables.
-**Formula**: ln(qbar_j) = ln(w_j) + ln(Q_j) + ln(L_j) - ln(R_j) - ln(1 - alpha)
-
-Derived from the screening FOC (estimation.tex eq. (2)): at the optimal
-cutoff, the marginal worker's skill equals the firm's wage-to-marginal-
-product ratio. Rearranging gives ln(qbar_j) in terms of observables
-and the production parameter alpha.
-
-**Standardization**: tilde_q_j = (ln(qbar_j) - gamma0) / sigma_e
-
-This converts to the standardized units used in the likelihood, where
-tilde_q measures cutoffs in standard deviations of the skill distribution.
-
-## Step 0e: Preference parameters (conditional logit)
+## Step 0d: Preference parameters (conditional logit)
 
 **Data**: Per-market worker choice microdata.
 **Model**: Standard MNL ignoring screening:
@@ -85,7 +70,54 @@ reliable screening thresholds. The MNL treats all firms as feasible for
 all workers. This biases delta and tau but provides reasonable starting
 values for the iterative solver.
 
-## Step 0f: Wage equation (2SLS)
+**Why before screening thresholds**: The MNL logit has no dependency on
+tilde_gamma, so it can run before the tg scan. This provides (tau, delta)
+for evaluating the micro NLL in the coarse grid scan (Step 0e).
+
+## Step 0e: Profiled tilde_gamma grid scan
+
+**Data**: Subsample of markets (first 10 by default).
+**Depends on**: tau and delta from Step 0d, tilde_gamma_naive from Step 0a,
+gamma0 and sigma_e from Step 0a, alpha from Step 0c.
+
+The naive sigma_e from the wage regression is biased upward (~0.26 vs true
+0.135). Since tilde_gamma = gamma1/sigma_e, this halves the naive tg estimate,
+placing tq in a gradient dead zone and trapping the solver at a suboptimal basin.
+
+**Algorithm** (profiled inner solves):
+1. Build a log-spaced grid of 5 points from tg_naive/3 to tg_naive*3,
+   always including tg_naive itself.
+2. Subsample up to 10 markets (deterministic: first N).
+3. For each candidate tg:
+   a. Set theta_G = [tau_naive, tg_candidate].
+   b. For each market, initialize theta_m = [delta_MNL, tq_quantile(tg)]
+      and run `solve_market()` (L-BFGS inner solve for delta and tq at
+      fixed theta_G, maxiter=200). This profiles out (delta, tq).
+   c. Sum per-market optimized NLLs → profiled NLL at this tg.
+4. Return the tg with lowest profiled NLL. If the best is at a grid
+   boundary, fall back to tg_naive (monotone landscape = unreliable).
+
+The profiled objective is faithful: each tg is evaluated at its own
+optimized (delta, tq), not at MNL deltas that ignore screening.
+Cost: ~3-8 min (JIT compilation per unique J, then ~2-5s per inner solve).
+
+**CLI**: `--skip_coarse_tg_scan` disables this step and uses the naive tg
+from Step 0a directly.
+
+## Step 0f: Screening thresholds
+
+**Data**: Per-market firm-worker matches.
+**Formula**: tq_j = tilde_gamma * quantile(v[matched to j], 0.05)
+
+The screening cutoff determines the minimum skill to qualify for firm j,
+so the lowest-skilled matched workers bound the cutoff from above. Using
+the 5th percentile of matched-worker skill (scaled by tilde_gamma) places
+tq in the region where screening is active and the NLL gradient is nonzero.
+
+Uses the (possibly scan-refined) tilde_gamma from Step 0e. Firms with no
+matched workers get the market median tq as fallback.
+
+## Step 0g: Wage equation (2SLS)
 
 **Data**: All firms across all markets.
 **Regression**: 2SLS of delta_j on ln(w_j) instrumented with (1, z1_j).
@@ -102,9 +134,9 @@ theta_G = [tau, tilde_gamma, alpha, sigma_e, eta, gamma0]
 
 | Index | Parameter | Step | Typical range |
 |-------|-----------|------|---------------|
-| 0 | tau | 0e | (0, 1) |
-| 1 | tilde_gamma | 0a | (0, 20) |
+| 0 | tau | 0d | (0, 1) |
+| 1 | tilde_gamma | 0a/0e | (0, 20) |
 | 2 | alpha | 0c | (0, 1) |
 | 3 | sigma_e | 0a | (0, 2) |
-| 4 | eta | 0f | (0, 20) |
+| 4 | eta | 0g | (0, 20) |
 | 5 | gamma0 | 0a | (-2, 2) |

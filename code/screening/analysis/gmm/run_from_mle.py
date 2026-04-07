@@ -149,6 +149,7 @@ def load_market_data_with_inner(
 
     has_z1 = "z1" in firms_df.columns
     has_z2 = "z2" in firms_df.columns
+    has_xi = "xi" in firms_df.columns
     qbar_col = "qbar" if "qbar" in firms_df.columns else "c"
 
     market_list = []
@@ -192,6 +193,16 @@ def load_market_data_with_inner(
         z1 = fdf["z1"].values.astype(np.float64) if has_z1 else np.zeros(J_m, dtype=np.float64)
         z2 = fdf["z2"].values.astype(np.float64) if has_z2 else np.zeros(J_m, dtype=np.float64)
         z3 = np.ones(J_m, dtype=np.float64)
+        xi = fdf["xi"].values.astype(np.float64) if has_xi else np.zeros(J_m, dtype=np.float64)
+
+        # v_bar_j = average observable skill among workers matched to firm j
+        v_bar = np.zeros(J_m, dtype=np.float64)
+        for j in range(J_m):
+            mask_j = choice_idx == (j + 1)
+            if np.any(mask_j):
+                v_bar[j] = np.mean(v[mask_j])
+            else:
+                v_bar[j] = np.mean(v)
 
         omega = J_m / total_J
 
@@ -201,6 +212,7 @@ def load_market_data_with_inner(
             "v": v, "choice_idx": choice_idx, "D": D,
             "w": w, "R": R, "L": L,
             "z1": z1, "z2": z2, "z3": z3,
+            "xi": xi, "v_bar": v_bar,
             "omega": omega,
         })
         J_per_list.append(J_m)

@@ -90,6 +90,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--profile_delta", action="store_true",
                    help="Profile out delta via BLP contraction; optimize "
                         "tilde_q only (implies --freeze_globals)")
+    p.add_argument("--tg_init", type=float, default=None,
+                   help="Override tilde_gamma initial value (default: use naive init)")
+    p.add_argument("--tau_init", type=float, default=None,
+                   help="Override tau initial value (default: use naive init)")
+    p.add_argument("--freeze_tg", type=float, default=None,
+                   help="Fix tilde_gamma at this value; optimize tau + inner (delta, tq)")
+    p.add_argument("--freeze_tau", type=float, default=None,
+                   help="Fix tau at this value; optimize tilde_gamma + inner (delta, tq)")
+    p.add_argument("--skip_coarse_tg_scan", action="store_true",
+                   help="Skip coarse tg grid scan; use naive tg from wage regression only")
     return p.parse_args()
 
 
@@ -270,7 +280,9 @@ def main() -> None:
             )
             hybrid_mds.append(hmd)
 
-        theta_G_full, all_deltas, all_tilde_qs = compute_pooled_naive_init(hybrid_mds)
+        theta_G_full, all_deltas, all_tilde_qs = compute_pooled_naive_init(
+            hybrid_mds, coarse_tg_scan=not args.skip_coarse_tg_scan
+        )
         # theta_G_full = [tau, tilde_gamma, alpha, sigma_e, eta, gamma0]
         tau_init = theta_G_full[0]
         tilde_gamma_init = theta_G_full[1]
@@ -280,6 +292,57 @@ def main() -> None:
         print(f"  tau_init={tau_init:.4f}, tilde_gamma_init={tilde_gamma_init:.4f}  "
               f"({init_time:.1f}s)")
 
+        # Save naive values for logging before any overrides
+        naive_tau = float(tau_init)
+        naive_tg = float(tilde_gamma_init)
+
+        # freeze_tau implies tau_init
+        if args.freeze_tau is not None and args.tau_init is None:
+            args.tau_init = args.freeze_tau
+
+        # freeze_tg implies tg_init (so tq init uses the frozen value)
+        if args.freeze_tg is not None and args.tg_init is None:
+            args.tg_init = args.freeze_tg
+
+        if args.tg_init is not None:
+            tilde_gamma_init = args.tg_init
+            theta_G_init = np.array([tau_init, tilde_gamma_init], dtype=np.float64)
+            # Recompute tq for all markets using overridden tg
+            for i, md in enumerate(market_datas):
+                choice_np = np.asarray(md.choice_m, dtype=np.int32)
+                v_np = np.asarray(md.X_m, dtype=np.float64)
+                tq_new = np.empty(md.J_per, dtype=np.float64)
+                for j in range(md.J_per):
+                    mask_j = choice_np == (j + 1)
+                    if np.any(mask_j):
+                        v_low = float(np.quantile(v_np[mask_j], 0.05))
+                        tq_new[j] = tilde_gamma_init * v_low
+                    else:
+                        tq_new[j] = all_tilde_qs[i][j]
+                all_tilde_qs[i] = tq_new
+            print(f"  ** tg_init overridden: {naive_tg:.4f} -> {tilde_gamma_init:.4f}")
+
+        if args.tau_init is not None:
+            tau_init = args.tau_init
+            theta_G_init[0] = tau_init
+            print(f"  ** tau_init overridden: {naive_tau:.4f} -> {tau_init:.4f}")
+
+        theta_G_init_saved = theta_G_init.copy()
+
+        # Compute init recovery metrics (delta/tq at init vs truth)
+        w_true = meta["w_flat"]
+        xi_true = meta["xi_flat"]
+        qbar_true = meta["qbar_flat"]
+        delta_true_all = eta_param * np.log(np.maximum(w_true, 1e-300)) + xi_true
+        tq_true_all = (np.log(np.maximum(qbar_true, 1e-300)) - gamma0_val) / sigma_e_val
+        delta_init_all = np.concatenate(all_deltas)
+        tq_init_all = np.concatenate(all_tilde_qs)
+        n_init = len(delta_init_all)
+        init_delta_corr = float(np.corrcoef(delta_init_all, delta_true_all)[0, 1]) if n_init > 1 else 0.0
+        init_delta_rmse = float(np.sqrt(np.mean((delta_init_all - delta_true_all) ** 2)))
+        init_tq_corr = float(np.corrcoef(tq_init_all, tq_true_all)[0, 1]) if n_init > 1 else 0.0
+        init_tq_rmse = float(np.sqrt(np.mean((tq_init_all - tq_true_all) ** 2)))
+
         # Build per-market theta_m = [delta, tilde_q] and partition
         init_partitions = [[] for _ in range(size)]
         for i, md in enumerate(market_datas):
@@ -288,6 +351,13 @@ def main() -> None:
     else:
         init_partitions = None
         theta_G_init = None
+        naive_tau = 0.0
+        naive_tg = 0.0
+        theta_G_init_saved = None
+        init_delta_corr = 0.0
+        init_delta_rmse = 0.0
+        init_tq_corr = 0.0
+        init_tq_rmse = 0.0
 
     local_theta_m_inits = comm.scatter(init_partitions, root=0)
     theta_G_init = comm.bcast(theta_G_init, root=0)
@@ -357,8 +427,14 @@ def main() -> None:
     else:
         needs_hessian = args.outer_method in ("trust-ncg", "Newton-CG")
         if rank == 0:
+            freeze_parts = []
+            if args.freeze_tau is not None:
+                freeze_parts.append(f"freeze_tau={args.freeze_tau}")
+            if args.freeze_tg is not None:
+                freeze_parts.append(f"freeze_tg={args.freeze_tg}")
+            freeze_msg = (", " + ", ".join(freeze_parts)) if freeze_parts else ""
             print(f"\nStarting outer loop ({args.outer_method}, "
-                  f"{size} ranks, {M} markets)...")
+                  f"{size} ranks, {M} markets{freeze_msg})...")
         result = run_outer_loop(
             comm, local_markets, local_theta_m_inits, theta_G_init,
             max_outer_iter=args.outer_maxiter,
@@ -368,6 +444,8 @@ def main() -> None:
             compute_hessian=needs_hessian,
             method=args.outer_method,
             verbose=(rank == 0),
+            freeze_tg=args.freeze_tg,
+            freeze_tau=args.freeze_tau,
         )
     solve_time = time.perf_counter() - solve_start
     total_time = time.perf_counter() - total_start
@@ -441,6 +519,9 @@ def main() -> None:
 
         out = {
             "solver": f"distributed_mpi_{args.outer_method}",
+            "freeze_tau": args.freeze_tau,
+            "freeze_tg": args.freeze_tg,
+            "skip_coarse_tg_scan": args.skip_coarse_tg_scan,
             "theta_G": theta_G_hat.tolist(),
             "theta_G_names": ["tau", "tilde_gamma"],
             "fixed_params": {
@@ -462,6 +543,16 @@ def main() -> None:
             "final_grad_norm_z": final_grad,
             "mpi_ranks": size,
             "M": M, "J_per_list": J_per_list, "J_total": J_total,
+            "init_values": {
+                "tau_init": float(theta_G_init_saved[0]),
+                "tg_init": float(theta_G_init_saved[1]),
+                "naive_tau": naive_tau,
+                "naive_tg": naive_tg,
+                "delta_init_corr": init_delta_corr,
+                "delta_init_rmse": init_delta_rmse,
+                "tq_init_corr": init_tq_corr,
+                "tq_init_rmse": init_tq_rmse,
+            },
             "recovery": {
                 "tau_hat": tau_hat, "tau_true": tau_true,
                 "tau_err": tau_hat - tau_true,

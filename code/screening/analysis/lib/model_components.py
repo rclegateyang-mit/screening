@@ -416,6 +416,109 @@ def compute_penalty(
 
 
 # ---------------------------------------------------------------------------
+# Functions 6-8: per-firm residuals for GMM moment testing
+# ---------------------------------------------------------------------------
+
+def compute_residual_C(
+    sigma_e: jnp.ndarray,
+    alpha: jnp.ndarray,
+    tilde_q: jnp.ndarray,
+    tilde_Q: jnp.ndarray,
+    w: jnp.ndarray,
+    R: jnp.ndarray,
+    L: jnp.ndarray,
+) -> jnp.ndarray:
+    """Combined residual r^C_j (screening FOC + production, eliminates A_j).
+
+    r^C_j = sigma_e * tilde_q_j - ln(tilde_Q_j^M) - ln(w_j) - ln(L_j)
+            + ln(1-alpha) + ln(R_j)
+
+    Zero at true parameters for every firm. gamma0 cancels algebraically.
+    Identifies sigma_e from cross-firm variation and alpha from the level.
+
+    Args:
+        sigma_e:  scalar
+        alpha:    scalar
+        tilde_q:  (J,) standardized cutoffs
+        tilde_Q:  (J,) standardized average skill (from compute_tilde_Q_M)
+        w:        (J,) wages
+        R:        (J,) revenue
+        L:        (J,) labor counts
+
+    Returns:
+        r_C: (J,) per-firm combined residual.
+    """
+    safe_alpha = jnp.clip(alpha, 1e-6, 1.0 - 1e-6)
+    ln_w = jnp.log(jnp.maximum(w, 1e-300))
+    ln_R = jnp.log(jnp.maximum(R, 1e-300))
+    ln_L = jnp.log(jnp.maximum(L, 1e-300))
+    ln_tQ = jnp.log(jnp.maximum(tilde_Q, 1e-300))
+    return sigma_e * tilde_q - ln_tQ - ln_w - ln_L + jnp.log1p(-safe_alpha) + ln_R
+
+
+def compute_residual_P(
+    alpha: jnp.ndarray,
+    tilde_Q: jnp.ndarray,
+    R: jnp.ndarray,
+    L: jnp.ndarray,
+) -> jnp.ndarray:
+    """Production residual r^P_j.
+
+    r^P_j = ln(R_j) - (1-alpha) * ln(tilde_Q_j^M * L_j)
+
+    Residual = ln(A_j) + (1-alpha)*gamma0.  Requires instruments orthogonal
+    to ln(A_j); demeaned instruments absorb the constant shift.
+
+    Args:
+        alpha:    scalar
+        tilde_Q:  (J,) standardized average skill
+        R:        (J,) revenue
+        L:        (J,) labor counts
+
+    Returns:
+        r_P: (J,) per-firm production residual.
+    """
+    safe_alpha = jnp.clip(alpha, 1e-6, 1.0 - 1e-6)
+    ln_R = jnp.log(jnp.maximum(R, 1e-300))
+    ln_tQ = jnp.log(jnp.maximum(tilde_Q, 1e-300))
+    ln_L = jnp.log(jnp.maximum(L, 1e-300))
+    return ln_R - (1.0 - safe_alpha) * (ln_tQ + ln_L)
+
+
+def compute_residual_S(
+    sigma_e: jnp.ndarray,
+    alpha: jnp.ndarray,
+    tilde_q: jnp.ndarray,
+    tilde_Q: jnp.ndarray,
+    w: jnp.ndarray,
+    L: jnp.ndarray,
+) -> jnp.ndarray:
+    """Screening FOC residual r^S_j.
+
+    r^S_j = sigma_e * tilde_q_j - alpha * ln(tilde_Q_j^M * L_j)
+            - ln(w_j) + ln(1-alpha)
+
+    Residual = -ln(A_j) - (1-alpha)*gamma0.  Requires demeaned instruments.
+
+    Args:
+        sigma_e:  scalar
+        alpha:    scalar
+        tilde_q:  (J,) standardized cutoffs
+        tilde_Q:  (J,) standardized average skill
+        w:        (J,) wages
+        L:        (J,) labor counts
+
+    Returns:
+        r_S: (J,) per-firm screening FOC residual.
+    """
+    safe_alpha = jnp.clip(alpha, 1e-6, 1.0 - 1e-6)
+    ln_w = jnp.log(jnp.maximum(w, 1e-300))
+    ln_tQ = jnp.log(jnp.maximum(tilde_Q, 1e-300))
+    ln_L = jnp.log(jnp.maximum(L, 1e-300))
+    return sigma_e * tilde_q - safe_alpha * (ln_tQ + ln_L) - ln_w + jnp.log1p(-safe_alpha)
+
+
+# ---------------------------------------------------------------------------
 # Exports
 # ---------------------------------------------------------------------------
 
@@ -425,4 +528,7 @@ __all__ = [
     "compute_tilde_Q_M",
     "compute_gmm_moments_M",
     "compute_penalty",
+    "compute_residual_C",
+    "compute_residual_P",
+    "compute_residual_S",
 ]

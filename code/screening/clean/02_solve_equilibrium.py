@@ -1775,7 +1775,7 @@ def _run_multi_market(args, raw_dir, clean_dir, plot_dir) -> int:
     print("=" * 50)
 
     # Build base command (forward all relevant args except --M and --parallel_markets)
-    base_cmd = [sys.executable, "-m", "code.data_environment.02_solve_equilibrium"]
+    base_cmd = [sys.executable, "-m", "screening.clean.02_solve_equilibrium"]
     # Forward path args so subprocesses use the right directories
     base_cmd += ["--firms_path", str(args.firms_path)]
     base_cmd += ["--support_path", str(args.support_path)]

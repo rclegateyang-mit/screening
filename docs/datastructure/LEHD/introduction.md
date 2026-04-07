@@ -37,11 +37,37 @@ Job and employer data spans from 1985 onward, with varying start dates by state.
 ## Technical Specifications
 
 ### Data Formats
-Files are provided in SAS format and—beginning with S2024—Parquet format. Worker and job-level Parquet files are partitioned by the first two PIK characters.
+Files are provided in SAS format and—beginning with S2024—Parquet format.
+- Parquet files are in a `parquet/` subdirectory alongside SAS tables
+- Worker and job-level Parquet files are partitioned by first two PIK characters (00-99, plus AA for non-numeric)
+- Example naming: `ehf_dc_00.parquet`
+- Functionally identical to SAS with minor storage type differences
+- Select metadata tables provided as comma-delimited text files
 
 ### Quarter Indexing
-The system uses _qtime_ as a sequential quarter counter beginning with 1985Q1 = 1, calculable via:
+The system uses _qtime_ as a sequential quarter counter beginning with 1985Q1 = 1:
 - `qtime = (year-1985) * 4 + quarter`
+- `year = int((qtime-1)/4) + 1985`
+- `quarter = mod(qtime-1, 4) + 1`
+
+### Data Packages (approval-based delivery)
+
+| Package | Contents | Approval |
+|---------|----------|----------|
+| Jobs Data | EHF_ZZ, JHF_ZZ, EHF_US_INDICATORS, EHF_ALL_AVAILABILITY | State, IRS, SSA |
+| Employer Data (Standard) | ECF_ZZ_SEIN, ECF_ZZ_SEINUNIT, SPF_ZZ, QWI_ZZ_SEINUNIT | State |
+| Employer Data (T26) | ECF_ZZ_SEIN_T26 | State + IRS |
+| Person Demographics | ICF_US + 3 implicates files | State, IRS, SSA |
+| Person Residence | ICF_US_RESIDENCE_CPR, ICF_US_RESIDENCE_RCF | State, IRS, SSA |
+
+### State Coverage Examples
+
+| State | ECF start | EHF start | QWI start | Notes |
+|-------|-----------|-----------|-----------|-------|
+| Maryland | 1985Q4 | 1985Q4 | 1990Q1 | |
+| California | 1991Q1 | 1991Q3 | 1991Q3 | |
+| Alaska | — | — | — | Inactive partner, data ends 2016Q2 |
+| Massachusetts | — | — | — | Most recent data 2024Q3 |
 
 ## Access Requirements
 
